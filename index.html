@@ -192,12 +192,35 @@
             });
         }
 
-        // ฟังก์ชันออกจากระบบกลับหน้าล็อกอิน
-        function handleLogout() {
-            currentPin = "";
-            document.getElementById("pinInput").value = "";
-            document.getElementById("mainApp").classList.add("hidden");
-            document.getElementById("loginCard").classList.remove("hidden");
+// ฟังก์ชันเมื่อกดเข้าสู่ระบบ (เวอร์ชันล็อกรหัสผ่าน)
+        function handleLogin() {
+            const pin = document.getElementById("pinInput").value;
+            if (pin.length < 4) {
+                alert("กรุณากรอกรหัส PIN ให้ครบ 4 หลักครับ");
+                return;
+            }
+
+            // 🔑 ตรงนี้แหละครับ! ใส่รหัส PIN ที่คุณอนุญาตให้เข้าใช้งานได้ลงไปในนี้
+            // สมมติว่าอยากให้เข้าได้แค่รหัส 1234, 5555, และ 9999 เท่านั้น
+            const allowedPins = ["1234", "5555", "9999"]; 
+
+            // ตรวจสอบว่ารหัสที่กรอกมา อยู่ในรายการที่อนุญาตไหม
+            if (!allowedPins.includes(pin)) {
+                alert("❌ รหัส PIN ไม่ถูกต้อง! ไม่ได้รับอนุญาตให้เข้าใช้งาน");
+                document.getElementById("pinInput").value = ""; // เคลียร์ช่องให้กรอกใหม่
+                return; // สั่งหยุดทำงานทันที ไม่ให้เข้าหน้าหลัก
+            }
+            
+            // ถ้ารหัสถูกต้อง จะทำงานต่อด้านล่างนี้
+            currentPin = pin;
+            
+            // สลับการแสดงผลหน้าจอ
+            document.getElementById("loginCard").classList.add("hidden");
+            document.getElementById("mainApp").classList.remove("hidden");
+            document.getElementById("userDisplay").innerText = currentPin;
+            
+            // ไปดึงประวัติของรหัส PIN นี้มาแสดงผลทันที
+            fetchHistory();
         }
     </script>
 </body>
