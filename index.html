@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wallet - PIN Auth</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div id="loginCard" class="w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center">
+        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-lock text-purple-600 text-2xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">ยินดีต้อนรับ</h2>
+        <p class="text-gray-500 text-sm mb-6">กรุณากรอกรหัส PIN 4 หลักเพื่อเข้าใช้งาน</p>
+        
+        <input type="password" id="pinInput" maxlength="4" placeholder="••••" 
+            class="w-full text-center text-3xl tracking-widest border-2 border-gray-200 rounded-xl py-3 mb-6 focus:outline-none focus:border-purple-500 transition-all">
+        
+        <button onclick="handleLogin()" 
+            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-purple-200">
+            เข้าสู่ระบบ
+        </button>
+    </div>
+
+    <div id="mainApp" class="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <p class="text-xs text-gray-400">ผู้ใช้งานกระเป๋าเงิน</p>
+                <h3 class="font-bold text-gray-700">PIN: <span id="userDisplay" class="text-purple-600"></span></h3>
+            </div>
+            <button onclick="handleLogout()" class="text-red-500 hover:text-red-700 text-sm font-medium">
+                <i class="fa-solid fa-right-from-bracket mr-1"></i> ออกจากระบบ
+            </button>
+        </div>
+
+        <h2 class="text-xl font-bold text-gray-800 mb-4">บันทึกรายการใหม่</h2>
+        <form id="walletForm" onsubmit="handleSave(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">ประเภทรายการ</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="border-2 border-gray-200 rounded-xl p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                        <input type="radio" name="type" value="รายรับ" checked class="hidden">
+                        <span class="text-sm font-medium text-gray-700">💰 รายรับ</span>
+                    </label>
+                    <label class="border-2 border-gray-200 rounded-xl p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                        <input type="radio" name="type" value="รายจ่าย" class="hidden">
+                        <span class="text-sm font-medium text-gray-700">💸 รายจ่าย</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">หมวดหมู่</label>
+                <select id="category" required class="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500 bg-white">
+                    <option value="อาหาร/เครื่องดื่ม">🍔 อาหาร/เครื่องดื่ม</option>
+                    <option value="เดินทาง/คมนาคม">🚗 เดินทาง/คมนาคม</option>
+                    <option value="ช้อปปิ้ง">🛍️ ช้อปปิ้ง</option>
+                    <option value="ที่อยู่อาศัย/ค่าน้ำไฟ">🏠 ที่อยู่อาศัย/ค่าน้ำไฟ</option>
+                    <option value="เงินเดือน/รายได้">💵 เงินเดือน/รายได้</option>
+                    <option value="อื่นๆ">✨ อื่นๆ</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">จำนวนเงิน (บาท)</label>
+                <input type="number" id="amount" required min="1" placeholder="0.00" class="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500 text-lg">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">หมายเหตุ (ถ้ามี)</label>
+                <input type="text" id="note" placeholder="ระบุรายละเอียดเพิ่มเติม..." class="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500">
+            </div>
+
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-purple-200 mt-2">
+                <i class="fa-solid fa-check-to-slot mr-1"></i> บันทึกรายการ
+            </button>
+        </form>
+
+        <hr class="my-6 border-gray-100">
+        <h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-history mr-1 text-gray-400"></i> ประวัติรายการของคุณ</h3>
+        <div class="max-h-60 overflow-y-auto space-y-2" id="historyList">
+            <p class="text-center text-sm text-gray-400 py-4">กำลังโหลดประวัติข้อมูล...</p>
+        </div>
+    </div>
+
+    <script>
+        // ใส่ลิงก์ของคุณให้เรียบร้อยแล้วครับ ไม่ต้องแก้ไขอะไรตรงนี้แล้วจ้า
+        const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxB53EYKl-o9kOGRbdrP02BNyjeH3TftZPhDVtOFEL6QSsWEltbKHbnNR4piiLHjzYl_A/exec";
+        
+        let currentPin = "";
+
+        // ฟังก์ชันเมื่อกดเข้าสู่ระบบ
+        function handleLogin() {
+            const pin = document.getElementById("pinInput").value;
+            if (pin.length < 4) {
+                alert("กรุณากรอกรหัส PIN ให้ครบ 4 หลักครับ");
+                return;
+            }
+            currentPin = pin;
+            
+            // สลับการแสดงผลหน้าจอ
+            document.getElementById("loginCard").classList.add("hidden");
+            document.getElementById("mainApp").classList.remove("hidden");
+            document.getElementById("userDisplay").innerText = currentPin;
+            
+            // ไปดึงประวัติของรหัส PIN นี้มาแสดงผลทันที
+            fetchHistory();
+        }
+
+        // ฟังก์ชันดึงข้อมูลประวัติจาก Google Sheets
+        function fetchHistory() {
+            const historyList = document.getElementById("historyList");
+            historyList.innerHTML = '<p class="text-center text-sm text-gray-400 py-4"><i class="fa-solid fa-spinner animate-spin mr-1"></i> กำลังดึงข้อมูลของคุณ...</p>';
+
+            fetch(BACKEND_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "fetch", pin: currentPin })
+            })
+            .then(res => res.json())
+            .then(response => {
+                if(response.status === "success") {
+                    const data = response.data;
+                    if(data.length === 0) {
+                        historyList.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ยังไม่มีรายการเงินบันทึกไว้สำหรับรหัสนี้</p>';
+                        return;
+                    }
+                    
+                    // แสดงรายการย้อนหลังทีละแถว จากใหม่สุดไปเก่าสุด
+                    historyList.innerHTML = "";
+                    data.reverse().forEach(item => {
+                        const isIncome = item.type === "รายรับ";
+                        const card = document.createElement("div");
+                        card.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-sm";
+                        card.innerHTML = `
+                            <div>
+                                <p class="font-semibold text-gray-700">${item.category}</p>
+                                <p class="text-xs text-gray-400">${item.note || '-'}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold ${isIncome ? 'text-green-600' : 'text-red-500'}">
+                                    ${isIncome ? '+' : '-'}${Number(item.amount).toLocaleString()} บาท
+                                </p>
+                            </div>
+                        `;
+                        historyList.appendChild(card);
+                    });
+                }
+            })
+            .catch(err => {
+                historyList.innerHTML = '<p class="text-center text-sm text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+                console.error(err);
+            });
+        }
+
+        // ฟังก์ชันเมื่อกดปุ่มส่งแบบฟอร์มเพื่อบันทึกรายการเงินใหม่
+        function handleSave(event) {
+            event.preventDefault();
+            
+            const type = document.querySelector('input[name="type"]:checked').value;
+            const category = document.getElementById("category").value;
+            const amount = document.getElementById("amount").value;
+            const note = document.getElementById("note").value;
+
+            // ส่งข้อมูลไปที่หลังบ้าน
+            fetch(BACKEND_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "save",
+                    pin: currentPin,
+                    type: type,
+                    category: category,
+                    amount: amount,
+                    note: note
+                })
+            })
+            .then(res => res.json())
+            .then(response => {
+                if (response.status === "success") {
+                    alert("บันทึกข้อมูลเรียบร้อยแล้วครับ! 🎉");
+                    document.getElementById("amount").value = "";
+                    document.getElementById("note").value = "";
+                    // โหลดประวัติใหม่ทันทีหลังบันทึกเสร็จ
+                    fetchHistory();
+                }
+            })
+            .catch(err => {
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+                console.error(err);
+            });
+        }
+
+        // ฟังก์ชันออกจากระบบกลับหน้าล็อกอิน
+        function handleLogout() {
+            currentPin = "";
+            document.getElementById("pinInput").value = "";
+            document.getElementById("mainApp").classList.add("hidden");
+            document.getElementById("loginCard").classList.remove("hidden");
+        }
+    </script>
+</body>
+</html>
