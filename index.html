@@ -128,12 +128,12 @@
     </div>
 
     <script>
-        // 🔗 ทำการอัปเดตลิงก์สคริปต์ Google อันใหม่ล่าสุดของพี่ให้เรียบร้อยแล้วครับพ้ม!
-        const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxKC2tzzlrJB5VF9AuubNTxhIwXaDqqf0aeBTGMr3SUoCz82Lyy_BF91UIz-x8eMlRq/exec";
-        const MY_LIFF_ID = "2010449850-pKmp8idI";
+        // 🔗 ลิงก์หลังบ้านตัวล่าสุดของพี่
+        const BACKEND_URL = "https://script.google.com/macros/s/AKfycbw5Eq1SHXz4KuNPw1p-3GDxw4PtD1uMvaBr0IvBaYnTzeMz88Pn99tNHKIxxkDIgfIxNg/exec";
+        const MY_LIFF_ID = "2010449850-pKmp8idI"; 
         
-        let currentLineId = "";
-        let filteredByPinData = [];
+        let currentLineId = ""; 
+        let filteredByPinData = []; 
 
         document.addEventListener("DOMContentLoaded", function() {
             initLiff();
@@ -166,7 +166,7 @@
         function getUserProfile() {
             liff.getProfile()
                 .then(profile => {
-                    currentLineId = profile.userId;
+                    currentLineId = profile.userId; 
                     document.getElementById("loginCard").classList.add("hidden");
                     document.getElementById("mainApp").classList.remove("hidden");
                     document.getElementById("walletOwner").innerText = profile.displayName;
@@ -227,6 +227,7 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
         }
 
+        // 🛠️ ส่วนแสดงผลประวัติที่ปรับแต่งให้ดึงทั้ง วันที่ และ เวลา ออกมาโชว์คู่กันแล้วครับ
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
             if(dataToRender.length === 0) {
@@ -244,8 +245,15 @@
                 const div = document.createElement("div");
                 div.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs hover:bg-purple-50/50 transition-colors shadow-2xs";
                 
+                // แปลงค่าจากฐานข้อมูล 2026-06-22 14:15:00 ให้แสดงผลแบบ วันที่ + เวลา น.
                 let rawDate = item.date || "";
-                let showDate = rawDate.split(" ")[0] || "-";
+                let showDateTime = "-";
+                if (rawDate) {
+                    let parts = rawDate.split(" ");
+                    let datePart = parts[0] || "-";
+                    let timePart = parts[1] ? parts[1].substring(0, 5) : ""; // ตัดเอาเฉพาะ ชั่ัวโมง:นาที
+                    showDateTime = timePart ? `${datePart} (${timePart} น.)` : datePart;
+                }
 
                 div.innerHTML = `
                     <div class="flex items-start gap-2 max-w-[70%]">
@@ -253,7 +261,7 @@
                         <div>
                             <p class="font-bold text-gray-700">${category}</p>
                             <p class="text-gray-400 text-[11px] my-0.5">${note || '-'}</p>
-                            <span class="text-[9px] bg-gray-200/60 text-gray-500 px-1.5 py-0.2 rounded-md">${showDate}</span>
+                            <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-md font-medium"><i class="fa-regular fa-clock mr-1 text-[8px]"></i>${showDateTime}</span>
                         </div>
                     </div>
                     <p class="font-bold text-right shrink-0 ${isInc ? 'text-green-600' : 'text-red-500'}">
