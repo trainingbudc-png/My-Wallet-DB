@@ -3,228 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wallet - PIN Auth</title>
+    <title>My Wallet - LINE Login Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen flex items-center justify-center p-4">
 
-    <div id="loginCard" class="w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center">
-        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fa-solid fa-lock text-purple-600 text-2xl"></i>
+    <div id="loginCard" class="w-full max-w-sm bg-white rounded-3xl shadow-xl p-8 text-center">
+        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+            <i class="fa-brands fa-line text-green-500 text-5xl"></i>
         </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">ยินดีต้อนรับ</h2>
-        <p class="text-gray-500 text-sm mb-6">กรุณากรอกรหัส PIN 4 หลักเพื่อเข้าใช้งาน</p>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบกระเป๋าเงิน</h2>
+        <p class="text-gray-500 text-sm mb-8">เพื่อความปลอดภัย โปรดเข้าสู่ระบบผ่านบัญชี LINE ของคุณ</p>
         
-        <input type="password" id="pinInput" maxlength="4" placeholder="••••" 
-            class="w-full text-center text-3xl tracking-widest border-2 border-gray-200 rounded-xl py-3 mb-6 focus:outline-none focus:border-purple-500 transition-all">
-        
-        <button onclick="handleLogin()" 
-            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-purple-200">
-            เข้าสู่ระบบ
+        <button onclick="loginLine()" class="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer text-lg">
+            <i class="fa-brands fa-line text-xl"></i> เข้าสู่ระบบด้วย LINE
         </button>
+        <p id="loadingTxt" class="text-gray-400 text-xs mt-4 hidden">🔄 กำลังตรวจสอบสิทธิ์บัญชี...</p>
     </div>
 
     <div id="mainApp" class="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 hidden">
         <div class="flex justify-between items-center mb-6">
-            <div>
-                <p class="text-xs text-gray-400">ผู้ใช้งานกระเป๋าเงิน</p>
-                <h3 class="font-bold text-gray-700">PIN: <span id="userDisplay" class="text-purple-600"></span></h3>
+            <div class="flex items-center gap-3">
+                <img id="userAvatar" src="" class="w-10 h-10 rounded-full border-2 border-purple-200 hidden" alt="โปรไฟล์">
+                <div>
+                    <p class="text-xs text-gray-400">ยินดีต้อนรับคุณ</p>
+                    <h3 class="font-bold text-gray-700 text-sm" id="walletOwner">กำลังโหลด...</h3>
+                </div>
             </div>
-            <button onclick="handleLogout()" class="text-red-500 hover:text-red-700 text-sm font-medium">
+            <button onclick="logoutLine()" class="text-gray-400 hover:text-red-500 text-xs font-medium cursor-pointer transition-colors">
                 <i class="fa-solid fa-right-from-bracket mr-1"></i> ออกจากระบบ
             </button>
         </div>
 
-        <h2 class="text-xl font-bold text-gray-800 mb-4">บันทึกรายการใหม่</h2>
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg mb-6">
+            <p class="text-xs text-purple-200">ยอดเงินคงเหลือทั้งหมด</p>
+            <h2 id="totalBalance" class="text-3xl font-black my-1">0 บาท</h2>
+            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-purple-500/30 text-xs">
+                <div>
+                    <p class="text-purple-200">🟢 รายรับรวม</p>
+                    <p id="totalIncome" class="font-bold text-sm">+0 บาท</p>
+                </div>
+                <div>
+                    <p class="text-purple-200">🔴 รายจ่ายรวม</p>
+                    <p id="totalExpense" class="font-bold text-sm">-0 บาท</p>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-lg font-bold text-gray-800 mb-3">บันทึกรายการใหม่</h2>
         <form id="walletForm" onsubmit="handleSave(event)" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">ประเภทรายการ</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <label class="border-2 border-gray-200 rounded-xl p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
-                        <input type="radio" name="type" value="รายรับ" checked class="hidden">
-                        <span class="text-sm font-medium text-gray-700">💰 รายรับ</span>
-                    </label>
-                    <label class="border-2 border-gray-200 rounded-xl p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
-                        <input type="radio" name="type" value="รายจ่าย" class="hidden">
-                        <span class="text-sm font-medium text-gray-700">💸 รายจ่าย</span>
-                    </label>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="border-2 border-gray-200 rounded-xl p-2.5 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                    <input type="radio" name="type" value="รายรับ" checked class="hidden">
+                    <span class="text-sm font-medium text-gray-700">💰 รายรับ</span>
+                </label>
+                <label class="border-2 border-gray-200 rounded-xl p-2.5 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                    <input type="radio" name="type" value="รายจ่าย" class="hidden">
+                    <span class="text-sm font-medium text-gray-700">💸 รายจ่าย</span>
+                </label>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">หมวดหมู่</label>
+                    <select id="category" required class="w-full border-2 border-gray-200 rounded-xl p-2 text-sm bg-white">
+                        <option value="อาหาร/เครื่องดื่ม">🍔 อาหาร/เครื่องดื่ม</option>
+                        <option value="เดินทาง/คมนาคม">🚗 เดินทาง/คมนาคม</option>
+                        <option value="ช้อปปิ้ง">🛍️ ช้อปปิ้ง</option>
+                        <option value="ที่อยู่อาศัย/ค่าน้ำไฟ">🏠 ที่อยู่อาศัย/ค่าน้ำไฟ</option>
+                        <option value="เงินเดือน/รายได้">💵 เงินเดือน/รายได้</option>
+                        <option value="อื่นๆ">✨ อื่นๆ</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">จำนวนเงิน (บาท)</label>
+                    <input type="number" id="amount" required min="1" placeholder="0.00" class="w-full border-2 border-gray-200 rounded-xl p-2 text-sm">
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">หมวดหมู่</label>
-                <select id="category" required class="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500 bg-white">
-                    <option value="อาหาร/เครื่องดื่ม">🍔 อาหาร/เครื่องดื่ม</option>
-                    <option value="เดินทาง/คมนาคม">🚗 เดินทาง/คมนาคม</option>
-                    <option value="ช้อปปิ้ง">🛍️ ช้อปปิ้ง</option>
-                    <option value="ที่อยู่อาศัย/ค่าน้ำไฟ">🏠 ที่อยู่อาศัย/ค่าน้ำไฟ</option>
-                    <option value="เงินเดือน/รายได้">💵 เงินเดือน/รายได้</option>
-                    <option value="อื่นๆ">✨ อื่นๆ</option>
-                </select>
+                <label class="block text-xs font-medium text-gray-500 mb-1">หมายเหตุ</label>
+                <input type="text" id="note" placeholder="รายละเอียดเพิ่มเติม..." class="w-full border-2 border-gray-200 rounded-xl p-2 text-sm">
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">จำนวนเงิน (บาท)</label>
-                <input type="number" id="amount" required min="1" placeholder="0.00" class="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500 text-lg">
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">หมายเหตุ (ถ้ามี)</label>
-                <input type="text" id="note" placeholder="ระบุรายละเอียดเพิ่มเติม..." class="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500">
-            </div>
-
-            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-purple-200 mt-2">
-                <i class="fa-solid fa-check-to-slot mr-1"></i> บันทึกรายการ
+            <button type="submit" id="submitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition-colors shadow-md cursor-pointer">
+                บันทึกรายการ
             </button>
         </form>
 
-        <hr class="my-6 border-gray-100">
-        <h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-history mr-1 text-gray-400"></i> ประวัติรายการของคุณ</h3>
-        <div class="max-h-60 overflow-y-auto space-y-2" id="historyList">
-            <p class="text-center text-sm text-gray-400 py-4">กำลังโหลดประวัติข้อมูล...</p>
+        <hr class="my-5 border-gray-100">
+        
+        <div class="mb-4 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-history mr-1 text-purple-600"></i> ประวัติรายการ</h3>
+                <button onclick="clearFilter()" id="clearFilterBtn" class="text-xs text-purple-600 hover:underline hidden">แสดงทั้งหมด</button>
+            </div>
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-gray-400"></i>
+                    <input type="text" id="searchNote" oninput="filterData()" placeholder="ค้นหาหมวดหมู่/หมายเหตุ..." class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-purple-500">
+                </div>
+                <input type="date" id="filterDate" onchange="filterData()" class="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-purple-500 text-gray-600">
+            </div>
+        </div>
+        
+        <div class="max-h-52 overflow-y-auto space-y-2 scroll-smooth pr-1" id="historyList">
+            <p class="text-center text-sm text-gray-400 py-4">กำลังโหลดประวัติ...</p>
+        </div>
+    </div>
+
+    <div id="successModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl w-full max-w-xs shadow-2xl p-6 text-center">
+            <div class="w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-circle-check text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-1">บันทึกสำเร็จ</h3>
+            <p class="text-gray-500 text-sm mb-5">บันทึกข้อมูลเรียบร้อยแล้วครับ! 🎉</p>
+            <button onclick="closeSuccessModal()" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl cursor-pointer transition-colors shadow-md">
+                ตกลง
+            </button>
         </div>
     </div>
 
     <script>
-        // ใส่ลิงก์ของคุณให้เรียบร้อยแล้วครับ ไม่ต้องแก้ไขอะไรตรงนี้แล้วจ้า
-        const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxB53EYKl-o9kOGRbdrP02BNyjeH3TftZPhDVtOFEL6QSsWEltbKHbnNR4piiLHjzYl_A/exec";
+        // 🔗 ใส่รหัส LIFF ID ของพี่ให้เรียบร้อยแล้วครับพ้ม!
+        const MY_LIFF_ID = "2010449850-pKmp8idI"; 
         
-        let currentPin = "";
+        let currentLineId = ""; 
+        let rawMasterData = []; 
+        let filteredByPinData = []; 
 
-        // ฟังก์ชันเมื่อกดเข้าสู่ระบบ
-        function handleLogin() {
-            const pin = document.getElementById("pinInput").value;
-            if (pin.length < 4) {
-                alert("กรุณากรอกรหัส PIN ให้ครบ 4 หลักครับ");
-                return;
-            }
-            currentPin = pin;
-            
-            // สลับการแสดงผลหน้าจอ
-            document.getElementById("loginCard").classList.add("hidden");
-            document.getElementById("mainApp").classList.remove("hidden");
-            document.getElementById("userDisplay").innerText = currentPin;
-            
-            // ไปดึงประวัติของรหัส PIN นี้มาแสดงผลทันที
-            fetchHistory();
+        document.addEventListener("DOMContentLoaded", function() {
+            initLiff();
+        });
+
+        function initLiff() {
+            liff.init({ liffId: MY_LIFF_ID })
+                .then(() => {
+                    if (liff.isLoggedIn()) {
+                        getUserProfile();
+                    } else {
+                        document.getElementById("loginCard").classList.remove("hidden");
+                    }
+                })
+                .catch((err) => {
+                    alert("LIFF เริ่มต้นระบบไม่สำเร็จ: " + err);
+                });
         }
 
-        // ฟังก์ชันดึงข้อมูลประวัติจาก Google Sheets
-        function fetchHistory() {
-            const historyList = document.getElementById("historyList");
-            historyList.innerHTML = '<p class="text-center text-sm text-gray-400 py-4"><i class="fa-solid fa-spinner animate-spin mr-1"></i> กำลังดึงข้อมูลของคุณ...</p>';
+        function loginLine() {
+            document.getElementById("loadingTxt").classList.remove("hidden");
+            liff.login();
+        }
 
-            fetch(BACKEND_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "fetch", pin: currentPin })
-            })
-            .then(res => res.json())
-            .then(response => {
-                if(response.status === "success") {
-                    const data = response.data;
-                    if(data.length === 0) {
-                        historyList.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ยังไม่มีรายการเงินบันทึกไว้สำหรับรหัสนี้</p>';
-                        return;
+        function logoutLine() {
+            liff.logout();
+            window.location.reload();
+        }
+
+        function getUserProfile() {
+            liff.getProfile()
+                .then(profile => {
+                    currentLineId = profile.userId; 
+                    
+                    document.getElementById("loginCard").classList.add("hidden");
+                    document.getElementById("mainApp").classList.remove("hidden");
+                    
+                    document.getElementById("walletOwner").innerText = profile.displayName;
+                    if(profile.pictureUrl) {
+                        const avatar = document.getElementById("userAvatar");
+                        avatar.src = profile.pictureUrl;
+                        avatar.classList.remove("hidden");
                     }
                     
-                    // แสดงรายการย้อนหลังทีละแถว จากใหม่สุดไปเก่าสุด
-                    historyList.innerHTML = "";
-                    data.reverse().forEach(item => {
-                        const isIncome = item.type === "รายรับ";
-                        const card = document.createElement("div");
-                        card.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-sm";
-                        card.innerHTML = `
-                            <div>
-                                <p class="font-semibold text-gray-700">${item.category}</p>
-                                <p class="text-xs text-gray-400">${item.note || '-'}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-bold ${isIncome ? 'text-green-600' : 'text-red-500'}">
-                                    ${isIncome ? '+' : '-'}${Number(item.amount).toLocaleString()} บาท
-                                </p>
-                            </div>
-                        `;
-                        historyList.appendChild(card);
-                    });
-                }
-            })
-            .catch(err => {
-                historyList.innerHTML = '<p class="text-center text-sm text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
-                console.error(err);
+                    fetchHistory();
+                })
+                .catch(err => {
+                    alert("ดึงข้อมูลโปรไฟล์ LINE ไม่สำเร็จ: " + err);
+                });
+        }
+
+        function fetchHistory() {
+            const list = document.getElementById("historyList");
+            list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">🔄 กำลังดึงข้อมูลประวัติ...</p>';
+
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    if(response.status === "success") {
+                        filteredByPinData = response.data || [];
+                        filteredByPinData.reverse();
+                        calculateSummary(filteredByPinData);
+                        renderHistory(filteredByPinData);
+                    } else {
+                        showEmptyState();
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    showEmptyState();
+                })
+                .fetchHistoryData(currentLineId);
+        }
+
+        function showEmptyState() {
+            const list = document.getElementById("historyList");
+            list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการเก่า</p>';
+            calculateSummary([]);
+            renderHistory([]);
+        }
+
+        function calculateSummary(data) {
+            let inc = 0; let exp = 0;
+            data.forEach(item => {
+                const amt = Number(item.amount || 0);
+                const type = item.type || "";
+                if (type === "รายรับ") inc += amt;
+                else if (type === "รายจ่าย") exp += amt;
+            });
+            document.getElementById("totalBalance").innerText = (inc - exp).toLocaleString() + " บาท";
+            document.getElementById("totalIncome").innerText = "+" + inc.toLocaleString() + " บาท";
+            document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
+        }
+
+        function renderHistory(dataToRender) {
+            const list = document.getElementById("historyList");
+            if(dataToRender.length === 0) {
+                list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการ</p>';
+                return;
+            }
+            list.innerHTML = "";
+            dataToRender.forEach((item, index) => {
+                const type = item.type || "";
+                const category = item.category || "";
+                const note = item.note || "";
+                const amount = item.amount || 0;
+                const isInc = type === "รายรับ";
+                
+                const div = document.createElement("div");
+                div.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs hover:bg-purple-50/50 transition-colors shadow-2xs";
+                
+                let rawDate = item.date || "";
+                let showDate = rawDate.split(" ")[0] || "-";
+
+                div.innerHTML = `
+                    <div class="flex items-start gap-2 max-w-[70%]">
+                        <span class="text-[10px] font-bold text-purple-400 bg-purple-50 w-4 h-4 rounded-full flex items-center justify-center mt-0.5 shrink-0">${index + 1}</span>
+                        <div>
+                            <p class="font-bold text-gray-700">${category}</p>
+                            <p class="text-gray-400 text-[11px] my-0.5">${note || '-'}</p>
+                            <span class="text-[9px] bg-gray-200/60 text-gray-500 px-1.5 py-0.2 rounded-md">${showDate}</span>
+                        </div>
+                    </div>
+                    <p class="font-bold text-right shrink-0 ${isInc ? 'text-green-600' : 'text-red-500'}">
+                        ${isInc ? '+' : '-'}${Number(amount).toLocaleString()} บาท
+                    </p>
+                `;
+                list.appendChild(div);
             });
         }
 
-        // ฟังก์ชันเมื่อกดปุ่มส่งแบบฟอร์มเพื่อบันทึกรายการเงินใหม่
+        function filterData() {
+            const keyword = document.getElementById("searchNote").value.toLowerCase();
+            const filterDate = document.getElementById("filterDate").value;
+            const clearBtn = document.getElementById("clearFilterBtn");
+
+            if (keyword || filterDate) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
+
+            const filtered = filteredByPinData.filter(item => {
+                const category = (item.category || "").toLowerCase();
+                const note = (item.note || "").toLowerCase();
+                const matchKeyword = category.includes(keyword) || note.includes(keyword);
+                
+                let itemDateStr = item.date ? item.date.split(" ")[0] : "";
+                if(itemDateStr.includes("/")) {
+                    const parts = itemDateStr.split("/");
+                    if(parts[0].length < 4) { 
+                        itemDateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                    }
+                }
+
+                const matchDate = filterDate ? (itemDateStr.includes(filterDate)) : true;
+                return matchKeyword && matchDate;
+            });
+
+            renderHistory(filtered);
+        }
+
+        function clearFilter() {
+            document.getElementById("searchNote").value = "";
+            document.getElementById("filterDate").value = "";
+            document.getElementById("clearFilterBtn").classList.add("hidden");
+            renderHistory(filteredByPinData);
+        }
+
         function handleSave(event) {
             event.preventDefault();
-            
+            const btn = document.getElementById("submitBtn");
             const type = document.querySelector('input[name="type"]:checked').value;
             const category = document.getElementById("category").value;
             const amount = document.getElementById("amount").value;
             const note = document.getElementById("note").value;
 
-            // ส่งข้อมูลไปที่หลังบ้าน
-            fetch(BACKEND_URL, {
-                method: "POST",
-                body: JSON.stringify({
-                    action: "save",
-                    pin: currentPin,
-                    type: type,
-                    category: category,
-                    amount: amount,
-                    note: note
-                })
-            })
-            .then(res => res.json())
-            .then(response => {
-                if (response.status === "success") {
-                    alert("บันทึกข้อมูลเรียบร้อยแล้วครับ! 🎉");
+            btn.disabled = true;
+            btn.innerText = "กำลังบันทึก...";
+
+            google.script.run
+                .withSuccessHandler(function(res) {
                     document.getElementById("amount").value = "";
                     document.getElementById("note").value = "";
-                    // โหลดประวัติใหม่ทันทีหลังบันทึกเสร็จ
+                    showSuccessModal(); 
                     fetchHistory();
-                }
-            })
-            .catch(err => {
-                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-                console.error(err);
-            });
+                    btn.disabled = false;
+                    btn.innerText = "บันทึกรายการ";
+                })
+                .withFailureHandler(function(err) {
+                    alert("บันทึกไม่สำเร็จชั่วคราว: " + err);
+                    btn.disabled = false;
+                    btn.innerText = "บันทึกรายการ";
+                })
+                .saveTransactionData({
+                    lineId: currentLineId, type: String(type), 
+                    category: String(category), amount: String(amount), note: String(note)
+                });
         }
 
-// ฟังก์ชันเมื่อกดเข้าสู่ระบบ (เวอร์ชันล็อกรหัสผ่าน)
-        function handleLogin() {
-            const pin = document.getElementById("pinInput").value;
-            if (pin.length < 4) {
-                alert("กรุณากรอกรหัส PIN ให้ครบ 4 หลักครับ");
-                return;
-            }
-
-            // 🔑 ใส่รหัส PIN ที่คุณอนุญาตให้เข้าใช้งานได้ลงไปในนี้
-            const allowedPins = ["1234", "2222", "3333"]; 
-
-            // ตรวจสอบว่ารหัสที่กรอกมา อยู่ในรายการที่อนุญาตไหม
-            if (!allowedPins.includes(pin)) {
-                alert("❌ รหัส PIN ไม่ถูกต้อง! ไม่ได้รับอนุญาตให้เข้าใช้งาน");
-                document.getElementById("pinInput").value = ""; 
-                return; 
-            }
-            
-            currentPin = pin;
-            
-            document.getElementById("loginCard").classList.add("hidden");
-            document.getElementById("mainApp").classList.remove("hidden");
-            document.getElementById("userDisplay").innerText = currentPin;
-            
-            fetchHistory();
+        function showSuccessModal() {
+            document.getElementById("successModal").classList.remove("hidden");
         }
 
-        // ฟังก์ชันออกจากระบบกลับหน้าล็อกอิน
-        function handleLogout() {
-            currentPin = "";
-            document.getElementById("pinInput").value = "";
-            document.getElementById("mainApp").classList.add("hidden");
-            document.getElementById("loginCard").classList.remove("hidden");
+        function closeSuccessModal() {
+            document.getElementById("successModal").classList.add("hidden");
         }
     </script>
 </body>
