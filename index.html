@@ -128,7 +128,6 @@
     </div>
 
     <script>
-        // 🔗 อัปเดตลิงก์หลังบ้านตัวล่าสุดของพี่ให้เรียบร้อยแล้วครับ!
         const BACKEND_URL = "https://script.google.com/macros/s/AKfycbw0f0UT_B4vxfXtsnQcwTVWd4gKX7aIryOBM4DwNNpJjEsrGeGCCB6X6DElZGCW7qJTbA/exec";
         const MY_LIFF_ID = "2010449850-pKmp8idI"; 
         
@@ -158,9 +157,13 @@
             liff.login();
         }
 
+        // 🛠️ ปรับแก้ฟังก์ชันออกจากระบบให้มีการแจ้งเตือนยืนยันก่อนเสมอ
         function logoutLine() {
-            liff.logout();
-            window.location.reload();
+            const isConfirm = confirm("คุณต้องการออกจากระบบใช่หรือไม่?");
+            if (isConfirm) {
+                liff.logout();
+                window.location.reload();
+            }
         }
 
         function getUserProfile() {
@@ -227,7 +230,6 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
         }
 
-        // ⏰ ระบบแสดงข้อมูล วันที่ + เวลาแบบละเอียด
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
             if(dataToRender.length === 0) {
@@ -245,7 +247,6 @@
                 const div = document.createElement("div");
                 div.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs hover:bg-purple-50/50 transition-colors shadow-2xs";
                 
-                // แปลงฟอร์แมตแสดงวันที่พร้อมเวลา เช่น 2026-06-22 (14:15 น.)
                 let rawDate = item.date || "";
                 let showDateTime = "-";
                 if (rawDate) {
