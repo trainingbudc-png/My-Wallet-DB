@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wallet - LINE Login Pro</title>
+    <title>My Wallet - LINE Login Vercel Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -128,11 +128,11 @@
     </div>
 
     <script>
-        // 🔗 ใส่รหัส LIFF ID ของพี่ให้เรียบร้อยแล้วครับพ้ม!
+        // 🔗 อัปเดตลิงก์สคริปต์ Google หลังบ้านอันล่าสุดของพี่ให้เรียบร้อยแล้วครับ!
+        const BACKEND_URL = "https://script.google.com/macros/s/AKfycbw5Eq1SHXz4KuNPw1p-3GDxw4PtD1uMvaBr0IvBaYnTzeMz88Pn99tNHKIxxkDIgfIxNg/exec";
         const MY_LIFF_ID = "2010449850-pKmp8idI"; 
         
         let currentLineId = ""; 
-        let rawMasterData = []; 
         let filteredByPinData = []; 
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -167,17 +167,14 @@
             liff.getProfile()
                 .then(profile => {
                     currentLineId = profile.userId; 
-                    
                     document.getElementById("loginCard").classList.add("hidden");
                     document.getElementById("mainApp").classList.remove("hidden");
-                    
                     document.getElementById("walletOwner").innerText = profile.displayName;
                     if(profile.pictureUrl) {
                         const avatar = document.getElementById("userAvatar");
                         avatar.src = profile.pictureUrl;
                         avatar.classList.remove("hidden");
                     }
-                    
                     fetchHistory();
                 })
                 .catch(err => {
@@ -189,156 +186,26 @@
             const list = document.getElementById("historyList");
             list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">🔄 กำลังดึงข้อมูลประวัติ...</p>';
 
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    if(response.status === "success") {
-                        filteredByPinData = response.data || [];
-                        filteredByPinData.reverse();
-                        calculateSummary(filteredByPinData);
-                        renderHistory(filteredByPinData);
-                    } else {
-                        showEmptyState();
-                    }
-                })
-                .withFailureHandler(function(err) {
+            fetch(BACKEND_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "fetch", lineId: currentLineId })
+            })
+            .then(res => res.json())
+            .then(response => {
+                if(response.status === "success") {
+                    filteredByPinData = response.data || [];
+                    filteredByPinData.reverse();
+                    calculateSummary(filteredByPinData);
+                    renderHistory(filteredByPinData);
+                } else {
                     showEmptyState();
-                })
-                .fetchHistoryData(currentLineId);
+                }
+            })
+            .catch(err => {
+                showEmptyState();
+            });
         }
 
         function showEmptyState() {
-            const list = document.getElementById("historyList");
-            list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการเก่า</p>';
-            calculateSummary([]);
-            renderHistory([]);
-        }
-
-        function calculateSummary(data) {
-            let inc = 0; let exp = 0;
-            data.forEach(item => {
-                const amt = Number(item.amount || 0);
-                const type = item.type || "";
-                if (type === "รายรับ") inc += amt;
-                else if (type === "รายจ่าย") exp += amt;
-            });
-            document.getElementById("totalBalance").innerText = (inc - exp).toLocaleString() + " บาท";
-            document.getElementById("totalIncome").innerText = "+" + inc.toLocaleString() + " บาท";
-            document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
-        }
-
-        function renderHistory(dataToRender) {
-            const list = document.getElementById("historyList");
-            if(dataToRender.length === 0) {
-                list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการ</p>';
-                return;
-            }
-            list.innerHTML = "";
-            dataToRender.forEach((item, index) => {
-                const type = item.type || "";
-                const category = item.category || "";
-                const note = item.note || "";
-                const amount = item.amount || 0;
-                const isInc = type === "รายรับ";
-                
-                const div = document.createElement("div");
-                div.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs hover:bg-purple-50/50 transition-colors shadow-2xs";
-                
-                let rawDate = item.date || "";
-                let showDate = rawDate.split(" ")[0] || "-";
-
-                div.innerHTML = `
-                    <div class="flex items-start gap-2 max-w-[70%]">
-                        <span class="text-[10px] font-bold text-purple-400 bg-purple-50 w-4 h-4 rounded-full flex items-center justify-center mt-0.5 shrink-0">${index + 1}</span>
-                        <div>
-                            <p class="font-bold text-gray-700">${category}</p>
-                            <p class="text-gray-400 text-[11px] my-0.5">${note || '-'}</p>
-                            <span class="text-[9px] bg-gray-200/60 text-gray-500 px-1.5 py-0.2 rounded-md">${showDate}</span>
-                        </div>
-                    </div>
-                    <p class="font-bold text-right shrink-0 ${isInc ? 'text-green-600' : 'text-red-500'}">
-                        ${isInc ? '+' : '-'}${Number(amount).toLocaleString()} บาท
-                    </p>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        function filterData() {
-            const keyword = document.getElementById("searchNote").value.toLowerCase();
-            const filterDate = document.getElementById("filterDate").value;
-            const clearBtn = document.getElementById("clearFilterBtn");
-
-            if (keyword || filterDate) {
-                clearBtn.classList.remove("hidden");
-            } else {
-                clearBtn.classList.add("hidden");
-            }
-
-            const filtered = filteredByPinData.filter(item => {
-                const category = (item.category || "").toLowerCase();
-                const note = (item.note || "").toLowerCase();
-                const matchKeyword = category.includes(keyword) || note.includes(keyword);
-                
-                let itemDateStr = item.date ? item.date.split(" ")[0] : "";
-                if(itemDateStr.includes("/")) {
-                    const parts = itemDateStr.split("/");
-                    if(parts[0].length < 4) { 
-                        itemDateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                    }
-                }
-
-                const matchDate = filterDate ? (itemDateStr.includes(filterDate)) : true;
-                return matchKeyword && matchDate;
-            });
-
-            renderHistory(filtered);
-        }
-
-        function clearFilter() {
-            document.getElementById("searchNote").value = "";
-            document.getElementById("filterDate").value = "";
-            document.getElementById("clearFilterBtn").classList.add("hidden");
-            renderHistory(filteredByPinData);
-        }
-
-        function handleSave(event) {
-            event.preventDefault();
-            const btn = document.getElementById("submitBtn");
-            const type = document.querySelector('input[name="type"]:checked').value;
-            const category = document.getElementById("category").value;
-            const amount = document.getElementById("amount").value;
-            const note = document.getElementById("note").value;
-
-            btn.disabled = true;
-            btn.innerText = "กำลังบันทึก...";
-
-            google.script.run
-                .withSuccessHandler(function(res) {
-                    document.getElementById("amount").value = "";
-                    document.getElementById("note").value = "";
-                    showSuccessModal(); 
-                    fetchHistory();
-                    btn.disabled = false;
-                    btn.innerText = "บันทึกรายการ";
-                })
-                .withFailureHandler(function(err) {
-                    alert("บันทึกไม่สำเร็จชั่วคราว: " + err);
-                    btn.disabled = false;
-                    btn.innerText = "บันทึกรายการ";
-                })
-                .saveTransactionData({
-                    lineId: currentLineId, type: String(type), 
-                    category: String(category), amount: String(amount), note: String(note)
-                });
-        }
-
-        function showSuccessModal() {
-            document.getElementById("successModal").classList.remove("hidden");
-        }
-
-        function closeSuccessModal() {
-            document.getElementById("successModal").classList.add("hidden");
-        }
-    </script>
-</body>
-</html>
+            const list = document
