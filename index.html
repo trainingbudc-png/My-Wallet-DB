@@ -128,7 +128,6 @@
     </div>
 
     <script>
-        // 🔗 ลิงก์หลังบ้านตัวล่าสุดของพี่
         const BACKEND_URL = "https://script.google.com/macros/s/AKfycbw5Eq1SHXz4KuNPw1p-3GDxw4PtD1uMvaBr0IvBaYnTzeMz88Pn99tNHKIxxkDIgfIxNg/exec";
         const MY_LIFF_ID = "2010449850-pKmp8idI"; 
         
@@ -227,7 +226,7 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
         }
 
-        // 🛠️ ส่วนแสดงผลประวัติที่ปรับแต่งให้ดึงทั้ง วันที่ และ เวลา ออกมาโชว์คู่กันแล้วครับ
+        // 🛠️ ปรับเปลี่ยนเพื่อให้ดึงข้อมูลทั้ง วันที่ และ เวลา (ชั่วโมง:นาที) มาโชว์คู่กันในหน้าเว็บ
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
             if(dataToRender.length === 0) {
@@ -245,13 +244,13 @@
                 const div = document.createElement("div");
                 div.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs hover:bg-purple-50/50 transition-colors shadow-2xs";
                 
-                // แปลงค่าจากฐานข้อมูล 2026-06-22 14:15:00 ให้แสดงผลแบบ วันที่ + เวลา น.
+                // จัดฟอร์แมตวันที่ให้มีเวลาพ่วงท้าย เช่น 2026-06-22 (14:15 น.)
                 let rawDate = item.date || "";
                 let showDateTime = "-";
                 if (rawDate) {
                     let parts = rawDate.split(" ");
                     let datePart = parts[0] || "-";
-                    let timePart = parts[1] ? parts[1].substring(0, 5) : ""; // ตัดเอาเฉพาะ ชั่ัวโมง:นาที
+                    let timePart = parts[1] ? parts[1].substring(0, 5) : ""; 
                     showDateTime = timePart ? `${datePart} (${timePart} น.)` : datePart;
                 }
 
