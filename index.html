@@ -206,6 +206,7 @@
             });
         }
 
+        // 🌟 ซ่อมส่วนที่ขาดหายไปกลับมาครบถ้วนแล้วครับพ้ม!
         function showEmptyState() {
             const list = document.getElementById("historyList");
             list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการเก่า</p>';
@@ -226,7 +227,7 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
         }
 
-        // 🛠️ ปรับเปลี่ยนเพื่อให้ดึงข้อมูลทั้ง วันที่ และ เวลา (ชั่วโมง:นาที) มาโชว์คู่กันในหน้าเว็บ
+        // ⏰ ปรับแต่งระบบดึง "วันที่ + เวลา น." โชว์ที่การ์ดประวัติอย่างละเอียดสวยงาม
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
             if(dataToRender.length === 0) {
@@ -244,7 +245,7 @@
                 const div = document.createElement("div");
                 div.className = "flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs hover:bg-purple-50/50 transition-colors shadow-2xs";
                 
-                // จัดฟอร์แมตวันที่ให้มีเวลาพ่วงท้าย เช่น 2026-06-22 (14:15 น.)
+                // แยกวันที่และเวลาออกจากฐานข้อมูลเพื่อนำมาจัดกลุ่มการแสดงผล
                 let rawDate = item.date || "";
                 let showDateTime = "-";
                 if (rawDate) {
