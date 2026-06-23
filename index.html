@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wallet - Dashboard & Charts Pro</title>
+    <title>My Wallet - Dashboard & Dynamic Charts</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -57,7 +57,7 @@
         </div>
 
         <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-6">
-            <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนที่จะดูสถิติ)</label>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนเพื่อกรองข้อมูลและกราฟ)</label>
             <select id="dashboardMonthSelect" onchange="applyUnifiedFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
                 <option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>
             </select>
@@ -90,7 +90,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">จำนวนเงิน (บาท)</label>
-                    <input type="number" id="amount" required min="1" placeholder="0.00" class="w-full border-2 border-gray-200 rounded-xl p-2 text-sm">
+                    <input type="number" id="amount" required min="1" step="any" placeholder="0.00" class="w-full border-2 border-gray-200 rounded-xl p-2 text-sm">
                 </div>
             </div>
 
@@ -109,7 +109,7 @@
         <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs mb-6">
             <div class="flex items-center gap-2 mb-3">
                 <i class="fa-solid fa-chart-bar text-purple-600"></i>
-                <h3 class="text-sm font-bold text-gray-800">วิเคราะห์สถิติรายรับ-รายจ่ายรายเดือน</h3>
+                <h3 class="text-sm font-bold text-gray-800" id="chartTitle">วิเคราะห์สถิติรายรับ-รายจ่าย</h3>
             </div>
             <div class="w-full relative h-48">
                 <canvas id="monthlyChart"></canvas>
@@ -220,7 +220,7 @@
             .then(response => {
                 if(response.status === "success") {
                     filteredByPinData = response.data || [];
-                    filteredByPinData.reverse();
+                    filteredByPinData.reverse(); // เรียงจากล่าสุดขึ้นก่อน
                     
                     buildDashboardMonthDropdown(filteredByPinData); 
                     applyUnifiedFilter(); 
@@ -237,7 +237,7 @@
             const list = document.getElementById("historyList");
             list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการเก่า</p>';
             calculateSummary([]);
-            updateMonthlyChart([]);
+            updateDynamicChart([], "");
             renderHistory([]);
         }
 
@@ -286,6 +286,7 @@
             
             const badge = document.getElementById("dashboardBadge");
             const title = document.getElementById("summaryTitle");
+            const chartTitle = document.getElementById("chartTitle");
             const clearBtn = document.getElementById("clearFilterBtn");
 
             if (keyword || filterDate) {
@@ -294,6 +295,7 @@
                 clearBtn.classList.add("hidden");
             }
 
+            // 1. กรองสถิติสำหรับหน้าแดชบอร์ดการ์ดม่วง
             let dashboardFilteredData = filteredByPinData;
             if (selectedMonth) {
                 dashboardFilteredData = filteredByPinData.filter(item => {
@@ -302,13 +304,18 @@
                 });
                 badge.innerText = "เฉพาะเดือนที่เลือก";
                 title.innerText = "ยอดเงินคงเหลือประจำเดือน";
+                chartTitle.innerText = "วิเคราะห์สถิติประจำเดือนที่เลือก";
             } else {
                 badge.innerText = "ภาพรวมทั้งหมด";
                 title.innerText = "ยอดเงินคงเหลือทั้งหมด";
+                chartTitle.innerText = "วิเคราะห์สถิติรายรับ-รายจ่ายรายเดือน";
             }
             calculateSummary(dashboardFilteredData); 
-            updateMonthlyChart(filteredByPinData, selectedMonth);  
 
+            // 2. อัปเดตกราฟแบบไดนามิก (โชว์เฉพาะเดือนที่เลือก หรือโชว์ทุกเดือน)
+            updateDynamicChart(filteredByPinData, selectedMonth);  
+
+            // 3. กรองรายการในประวัติ (สอดคล้องกับเดือนที่เลือกและการค้นหาด้านล่าง)
             let historyFilteredData = filteredByPinData.filter(item => {
                 if (selectedMonth) {
                     let itemYearMonth = getYearMonthStr(item.date);
@@ -353,80 +360,87 @@
                 const amt = Number(item.amount || 0);
                 const type = item.type || "";
                 if (type === "รายรับ") inc += amt;
-                else if (type === "รายจ่าย") exp += amt;
+                else if (type === "รายจ่าย") exp += exp = exp + amt;
             });
-            document.getElementById("totalBalance").innerText = (inc - exp).toLocaleString() + " บาท";
-            document.getElementById("totalIncome").innerText = "+" + inc.toLocaleString() + " บาท";
-            document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
+            document.getElementById("totalBalance").innerText = (inc - exp).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) + " บาท";
+            document.getElementById("totalIncome").innerText = "+" + inc.toLocaleString(undefined, {maximumFractionDigits: 2}) + " บาท";
+            document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString(undefined, {maximumFractionDigits: 2}) + " บาท";
         }
 
-        function updateMonthlyChart(data, highlightMonth = "") {
-            const monthlyData = {};
+        // 📊 ฟังก์ชันใหม่วาดกราฟแบบไดนามิก: เลือกเดือน -> โชว์เฉพาะวันในเดือนนั้น, ไม่เลือก -> โชว์ทุกเดือนเปรียบเทียบกัน
+        function updateDynamicChart(data, selectedMonth = "") {
+            let labels = [];
+            let incomeDataset = [];
+            let expenseDataset = [];
 
-            data.forEach(item => {
-                let rawDate = item.date || "";
-                if (!rawDate) return;
-                
-                let yearMonth = getYearMonthStr(rawDate);
-                if (!yearMonth) return;
-                
-                if (!monthlyData[yearMonth]) {
-                    monthlyData[yearMonth] = { income: 0, expense: 0 };
-                }
-                
-                let amt = Number(item.amount || 0);
-                if (item.type === "รายรับ") {
-                    monthlyData[yearMonth].income += amt;
-                } else if (item.type === "รายจ่าย") {
-                    monthlyData[yearMonth].expense += amt;
-                }
-            });
-
-            const sortedMonths = Object.keys(monthlyData).sort();
-            const incomeDataset = [];
-            const expenseDataset = [];
-            const labels = [];
-            const incColors = [];
-            const expColors = [];
-
-            const monthNamesThai = {
+            const monthNamesThaiShort = {
                 "01": "ม.ค.", "02": "ก.พ.", "03": "มี.ค.", "04": "เม.ย.", "05": "พ.ค.", "06": "มิ.ย.",
                 "07": "ก.ค.", "08": "ส.ค.", "09": "ก.ย.", "10": "ต.ค.", "11": "พ.ย.", "12": "ธ.ค."
             };
 
-            sortedMonths.forEach(ym => {
-                let [year, month] = ym.split("-");
-                let thaiLabel = (monthNamesThai[month] || month) + " " + (parseInt(year) + 543).toString().substring(2);
-                labels.push(thaiLabel);
-                incomeDataset.push(monthlyData[ym].income);
-                expenseDataset.push(monthlyData[ym].expense);
-
-                if (highlightMonth) {
-                    if (ym === highlightMonth) {
-                        incColors.push('rgba(34, 197, 94, 0.95)');
-                        expColors.push('rgba(239, 68, 68, 0.95)');
-                    } else {
-                        incColors.push('rgba(34, 197, 94, 0.2)'); 
-                        expColors.push('rgba(239, 68, 68, 0.2)');   
+            if (selectedMonth) {
+                // เคสที่ 1: เลือกเดือนใดเดือนหนึ่ง -> แตกกราฟโชว์รายวันในเดือนนั้น
+                let dailyData = {};
+                data.forEach(item => {
+                    let rawDate = item.date || "";
+                    if (!rawDate) return;
+                    let ym = getYearMonthStr(rawDate);
+                    
+                    if (ym === selectedMonth) {
+                        let datePart = rawDate.split(" ")[0];
+                        let day = datePart.split("-")[2] || datePart.split("/")[0]; // ดึงเลขวันออกมา
+                        day = parseInt(day).toString(); // ตัดเลข 0 นำหน้าออกให้สวยงาม
+                        
+                        if (!dailyData[day]) dailyData[day] = { income: 0, expense: 0 };
+                        let amt = Number(item.amount || 0);
+                        if (item.type === "รายรับ") dailyData[day].income += amt;
+                        else if (item.type === "รายจ่าย") dailyData[day].expense += amt;
                     }
-                } else {
-                    incColors.push('rgba(34, 197, 94, 0.75)');
-                    expColors.push('rgba(239, 68, 68, 0.75)');
-                }
-            });
+                });
 
-            const ctx = document.getElementById('monthlyChart').getContext('2d');
-            
-            if (myChartInstance) {
-                myChartInstance.destroy();
+                // เรียงลำดับตามวันที่ 1-31
+                let sortedDays = Object.keys(dailyData).sort((a,b) => parseInt(a) - parseInt(b));
+                sortedDays.forEach(d => {
+                    labels.push("วันที่ " + d);
+                    incomeDataset.push(dailyData[d].income);
+                    expenseDataset.push(dailyData[d].expense);
+                });
+            } else {
+                // เคสที่ 2: ภาพรวมทั้งหมด -> กรุ๊ปข้อมูลแยกตามแต่ละเดือน
+                let monthlyData = {};
+                data.forEach(item => {
+                    let rawDate = item.date || "";
+                    if (!rawDate) return;
+                    let ym = getYearMonthStr(rawDate);
+                    if (!ym) return;
+                    
+                    if (!monthlyData[ym]) monthlyData[ym] = { income: 0, expense: 0 };
+                    let amt = Number(item.amount || 0);
+                    if (item.type === "รายรับ") monthlyData[ym].income += amt;
+                    else if (item.type === "รายจ่าย") monthlyData[ym].expense += amt;
+                });
+
+                let sortedMonths = Object.keys(monthlyData).sort();
+                sortedMonths.forEach(ym => {
+                    let [year, month] = ym.split("-");
+                    let thaiLabel = (monthNamesThaiShort[month] || month) + " " + (parseInt(year) + 543).toString().substring(2);
+                    labels.push(thaiLabel);
+                    incomeDataset.push(monthlyData[ym].income);
+                    expenseDataset.push(monthlyData[ym].expense);
+                });
             }
 
+            // ถ้าไม่มีข้อมูลเลย ให้แสดงแกนเปล่าๆ ป้องกันกราฟเออร์เรอร์
             if (labels.length === 0) {
                 labels.push("ไม่มีข้อมูล");
                 incomeDataset.push(0);
                 expenseDataset.push(0);
-                incColors.push('rgba(34, 197, 94, 0.5)');
-                expColors.push('rgba(239, 68, 68, 0.5)');
+            }
+
+            // จัดการโครงสร้างวาดใหม่บน Canvas
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if (myChartInstance) {
+                myChartInstance.destroy();
             }
 
             myChartInstance = new Chart(ctx, {
@@ -437,18 +451,18 @@
                         {
                             label: 'รายรับ (💰)',
                             data: incomeDataset,
-                            backgroundColor: incColors, 
+                            backgroundColor: 'rgba(34, 197, 94, 0.85)', 
                             borderColor: 'rgb(34, 197, 94)',
                             borderWidth: 1,
-                            borderRadius: 6
+                            borderRadius: 5
                         },
                         {
                             label: 'รายจ่าย (💸)',
                             data: expenseDataset,
-                            backgroundColor: expColors, 
+                            backgroundColor: 'rgba(239, 68, 68, 0.85)', 
                             borderColor: 'rgb(239, 68, 68)',
                             borderWidth: 1,
-                            borderRadius: 6
+                            borderRadius: 5
                         }
                     ]
                 },
@@ -472,10 +486,6 @@
                 }
             });
         }
-
-        document.addEventListener("DOMContentLoaded", function() {
-            // ป้องกันปัญหา Chart.js ทับพื้นที่ในกรอบ flex-col
-        });
 
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
@@ -513,7 +523,7 @@
                         </div>
                     </div>
                     <p class="font-bold text-right shrink-0 ${isInc ? 'text-green-600' : 'text-red-500'}">
-                        ${isInc ? '+' : '-'}${Number(amount).toLocaleString()} บาท
+                        ${isInc ? '+' : '-'}${Number(amount).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})} บาท
                     </p>
                 `;
                 list.appendChild(div);
