@@ -56,11 +56,21 @@
             </div>
         </div>
 
-        <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-6">
+        <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-4">
             <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนเพื่อกรองข้อมูลและกราฟ)</label>
             <select id="dashboardMonthSelect" onchange="applyUnifiedFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
                 <option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>
             </select>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs mb-6">
+            <div class="flex items-center gap-2 mb-2.5">
+                <i class="fa-solid fa-pie-chart text-purple-600 text-xs"></i>
+                <h3 class="text-xs font-bold text-gray-800" id="categoryBoxTitle">สรุปยอดเงินแยกตามหมวดหมู่</h3>
+            </div>
+            <div id="categorySummaryList" class="space-y-2 text-xs">
+                <p class="text-gray-400 text-center py-2">ไม่มีข้อมูลค่าใช้จ่ายในส่วนนี้</p>
+            </div>
         </div>
 
         <h2 class="text-lg font-bold text-gray-800 mb-3">บันทึกรายการใหม่</h2>
@@ -237,6 +247,7 @@
             const list = document.getElementById("historyList");
             list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการเก่า</p>';
             calculateSummary([]);
+            calculateCategoryBreakdown([]);
             updateDynamicChart([], "");
             renderHistory([]);
         }
@@ -287,6 +298,7 @@
             const badge = document.getElementById("dashboardBadge");
             const title = document.getElementById("summaryTitle");
             const chartTitle = document.getElementById("chartTitle");
+            const catBoxTitle = document.getElementById("categoryBoxTitle");
             const clearBtn = document.getElementById("clearFilterBtn");
 
             if (keyword || filterDate) {
@@ -295,7 +307,7 @@
                 clearBtn.classList.add("hidden");
             }
 
-            // 1. กรองสถิติสำหรับหน้าแดชบอร์ดการ์ดม่วง
+            // 1. กรองข้อมูลตามเดือนสำหรับแดชบอร์ดหลัก
             let dashboardFilteredData = filteredByPinData;
             if (selectedMonth) {
                 dashboardFilteredData = filteredByPinData.filter(item => {
@@ -305,17 +317,20 @@
                 badge.innerText = "เฉพาะเดือนที่เลือก";
                 title.innerText = "ยอดเงินคงเหลือประจำเดือน";
                 chartTitle.innerText = "วิเคราะห์สถิติประจำเดือนที่เลือก";
+                catBoxTitle.innerText = "สรุปยอดเงินแยกตามหมวดหมู่ (ประจำเดือน)";
             } else {
                 badge.innerText = "ภาพรวมทั้งหมด";
                 title.innerText = "ยอดเงินคงเหลือทั้งหมด";
                 chartTitle.innerText = "วิเคราะห์สถิติรายรับ-รายจ่ายรายเดือน";
+                catBoxTitle.innerText = "สรุปยอดเงินแยกตามหมวดหมู่ (ภาพรวมทั้งหมด)";
             }
             calculateSummary(dashboardFilteredData); 
+            calculateCategoryBreakdown(dashboardFilteredData); // คำนวณสรุปแยกหมวดหมู่
 
-            // 2. อัปเดตกราฟแบบไดนามิก (โชว์เฉพาะเดือนที่เลือก หรือโชว์ทุกเดือน)
+            // 2. อัปเดตกราฟแบบไดนามิก
             updateDynamicChart(filteredByPinData, selectedMonth);  
 
-            // 3. กรองรายการในประวัติ (สอดคล้องกับเดือนที่เลือกและการค้นหาด้านล่าง)
+            // 3. กรองรายการในประวัติล่างสุด
             let historyFilteredData = filteredByPinData.filter(item => {
                 if (selectedMonth) {
                     let itemYearMonth = getYearMonthStr(item.date);
@@ -360,14 +375,66 @@
                 const amt = Number(item.amount || 0);
                 const type = item.type || "";
                 if (type === "รายรับ") inc += amt;
-                else if (type === "รายจ่าย") exp += exp = exp + amt;
+                else if (type === "รายจ่าย") exp += amt;
             });
             document.getElementById("totalBalance").innerText = (inc - exp).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) + " บาท";
             document.getElementById("totalIncome").innerText = "+" + inc.toLocaleString(undefined, {maximumFractionDigits: 2}) + " บาท";
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString(undefined, {maximumFractionDigits: 2}) + " บาท";
         }
 
-        // 📊 ฟังก์ชันใหม่วาดกราฟแบบไดนามิก: เลือกเดือน -> โชว์เฉพาะวันในเดือนนั้น, ไม่เลือก -> โชว์ทุกเดือนเปรียบเทียบกัน
+        // 📂 [ฟังก์ชันคำนวณใหม่] แยกหมวดหมู่รายรับ-รายจ่ายโชว์ในแดชบอร์ด
+        function calculateCategoryBreakdown(data) {
+            const container = document.getElementById("categorySummaryList");
+            if(data.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-2">ไม่มีข้อมูลค่าใช้จ่ายในส่วนนี้</p>';
+                return;
+            }
+
+            let catData = {};
+            data.forEach(item => {
+                const cat = item.category || "อื่นๆ";
+                const type = item.type || "รายจ่าย";
+                const amt = Number(item.amount || 0);
+
+                if(!catData[cat]) {
+                    catData[cat] = { income: 0, expense: 0 };
+                }
+                if(type === "รายรับ") catData[cat].income += amt;
+                else catData[cat].expense += amt;
+            });
+
+            // ตกแต่งไอคอนหน้าหมวดหมู่ให้อัตโนมัติ
+            const emojiMap = {
+                "อาหาร/เครื่องดื่ม": "🍔", "เดินทาง/คมนาคม": "🚗", "ช้อปปิ้ง": "🛍️",
+                "ที่อยู่อาศัย/ค่าน้ำไฟ": "🏠", "เงินเดือน/รายได้": "💵", "อื่นๆ": "✨"
+            };
+
+            let htmlStr = "";
+            let hasContent = false;
+
+            Object.keys(catData).forEach(cat => {
+                const inc = catData[cat].income;
+                const exp = catData[cat].expense;
+                const emoji = emojiMap[cat] || "📝";
+
+                if (inc > 0 || exp > 0) {
+                    hasContent = true;
+                    htmlStr += `
+                        <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-gray-100">
+                            <span class="font-bold text-gray-700">${emoji} ${cat}</span>
+                            <div class="text-right space-y-0.5">
+                                ${inc > 0 ? `<p class="text-green-600 font-bold">+${inc.toLocaleString(undefined, {maximumFractionDigits:2})} บ.</p>` : ''}
+                                ${exp > 0 ? `<p class="text-red-500 font-bold">-${exp.toLocaleString(undefined, {maximumFractionDigits:2})} บ.</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            container.innerHTML = hasContent ? htmlStr : '<p class="text-gray-400 text-center py-2">ไม่มีข้อมูลค่าใช้จ่ายในส่วนนี้</p>';
+        }
+
+        // 📊 ฟังก์ชันวาดกราฟแบบไดนามิก
         function updateDynamicChart(data, selectedMonth = "") {
             let labels = [];
             let incomeDataset = [];
@@ -379,7 +446,6 @@
             };
 
             if (selectedMonth) {
-                // เคสที่ 1: เลือกเดือนใดเดือนหนึ่ง -> แตกกราฟโชว์รายวันในเดือนนั้น
                 let dailyData = {};
                 data.forEach(item => {
                     let rawDate = item.date || "";
@@ -388,8 +454,8 @@
                     
                     if (ym === selectedMonth) {
                         let datePart = rawDate.split(" ")[0];
-                        let day = datePart.split("-")[2] || datePart.split("/")[0]; // ดึงเลขวันออกมา
-                        day = parseInt(day).toString(); // ตัดเลข 0 นำหน้าออกให้สวยงาม
+                        let day = datePart.split("-")[2] || datePart.split("/")[0];
+                        day = parseInt(day).toString();
                         
                         if (!dailyData[day]) dailyData[day] = { income: 0, expense: 0 };
                         let amt = Number(item.amount || 0);
@@ -398,7 +464,6 @@
                     }
                 });
 
-                // เรียงลำดับตามวันที่ 1-31
                 let sortedDays = Object.keys(dailyData).sort((a,b) => parseInt(a) - parseInt(b));
                 sortedDays.forEach(d => {
                     labels.push("วันที่ " + d);
@@ -406,7 +471,6 @@
                     expenseDataset.push(dailyData[d].expense);
                 });
             } else {
-                // เคสที่ 2: ภาพรวมทั้งหมด -> กรุ๊ปข้อมูลแยกตามแต่ละเดือน
                 let monthlyData = {};
                 data.forEach(item => {
                     let rawDate = item.date || "";
@@ -430,14 +494,12 @@
                 });
             }
 
-            // ถ้าไม่มีข้อมูลเลย ให้แสดงแกนเปล่าๆ ป้องกันกราฟเออร์เรอร์
             if (labels.length === 0) {
                 labels.push("ไม่มีข้อมูล");
                 incomeDataset.push(0);
                 expenseDataset.push(0);
             }
 
-            // จัดการโครงสร้างวาดใหม่บน Canvas
             const ctx = document.getElementById('monthlyChart').getContext('2d');
             if (myChartInstance) {
                 myChartInstance.destroy();
