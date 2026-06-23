@@ -38,8 +38,11 @@
             </button>
         </div>
 
-        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg mb-6">
-            <p class="text-xs text-purple-200">ยอดเงินคงเหลือทั้งหมด</p>
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg mb-4">
+            <div class="flex justify-between items-center">
+                <p class="text-xs text-purple-200" id="summaryTitle">ยอดเงินคงเหลือทั้งหมด</p>
+                <span id="dashboardBadge" class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">ภาพรวมทั้งหมด</span>
+            </div>
             <h2 id="totalBalance" class="text-3xl font-black my-1">0 บาท</h2>
             <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-purple-500/30 text-xs">
                 <div>
@@ -51,6 +54,13 @@
                     <p id="totalExpense" class="font-bold text-sm">-0 บาท</p>
                 </div>
             </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-6">
+            <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนที่จะดูสถิติ)</label>
+            <select id="dashboardMonthSelect" onchange="handleDashboardFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
+                <option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>
+            </select>
         </div>
 
         <h2 class="text-lg font-bold text-gray-800 mb-3">บันทึกรายการใหม่</h2>
@@ -99,24 +109,15 @@
         <div class="mb-4 bg-gray-50 p-3 rounded-2xl border border-gray-100">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-history mr-1 text-purple-600"></i> ประวัติรายการ</h3>
-                <button onclick="clearFilter()" id="clearFilterBtn" class="text-xs text-purple-600 hover:underline hidden">แสดงทั้งหมด</button>
+                <button onclick="clearHistoryFilter()" id="clearFilterBtn" class="text-xs text-purple-600 hover:underline hidden">ล้างการค้นหา</button>
             </div>
             
-            <div class="space-y-2">
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 mb-1">📅 เลือกเดือนที่จะเรียกดู</label>
-                    <select id="filterMonthSelect" onchange="filterData()" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-purple-500 text-gray-700">
-                        <option value="">แสดงทุกเดือนรวมกัน (ทั้งหมด)</option>
-                    </select>
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-gray-400"></i>
+                    <input type="text" id="searchNote" oninput="filterHistoryList()" placeholder="ค้นหาหมวดหมู่/หมายเหตุ..." class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-purple-500">
                 </div>
-
-                <div class="flex gap-2">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-gray-400"></i>
-                        <input type="text" id="searchNote" oninput="filterData()" placeholder="ค้นหาหมวดหมู่/หมายเหตุ..." class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-purple-500">
-                    </div>
-                    <input type="date" id="filterDate" onchange="filterData()" class="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-purple-500 text-gray-600">
-                </div>
+                <input type="date" id="filterDate" onchange="filterHistoryList()" class="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-purple-500 text-gray-600">
             </div>
         </div>
         
@@ -221,10 +222,9 @@
                     filteredByPinData = response.data || [];
                     filteredByPinData.reverse();
                     
-                    buildMonthDropdown(filteredByPinData); // สร้างตัวเลือกเดือนให้กดเลือกแบบไดนามิก
-                    calculateSummary(filteredByPinData);
-                    updateMonthlyChart(filteredByPinData); 
-                    renderHistory(filteredByPinData);
+                    buildDashboardMonthDropdown(filteredByPinData); // ป้อนรายการเดือนเข้าสู่เดสก์บอร์ด
+                    handleDashboardFilter(); // คำนวณแผงเดสก์บอร์ดและวาดกราฟหลัก
+                    renderHistory(filteredByPinData); // แสดงรายการประวัติทั้งหมดตอนเริ่มต้น
                 } else {
                     showEmptyState();
                 }
@@ -242,17 +242,17 @@
             renderHistory([]);
         }
 
-        // 📅 ระบบสร้างตัวเลือกเดือนใน Dropdown อ้างอิงตามข้อมูลจริงที่มีในสเปรดชีต
-        function buildMonthDropdown(data) {
-            const select = document.getElementById("filterMonthSelect");
-            const savedValue = select.value; // เก็บค่าที่เลือกค้างไว้
-            select.innerHTML = '<option value="">แสดงทุกเดือนรวมกัน (ทั้งหมด)</option>';
+        // 📅 จัดการสร้างตัวเลือกเดือนใส่ลงในแผงควบคุม Dashboard ด้านบน
+        function buildDashboardMonthDropdown(data) {
+            const select = document.getElementById("dashboardMonthSelect");
+            const savedValue = select.value; 
+            select.innerHTML = '<option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>';
             
             const months = new Set();
             data.forEach(item => {
                 if (item.date) {
                     let datePart = item.date.split(" ")[0];
-                    let yearMonth = datePart.substring(0, 7); // YYYY-MM
+                    let yearMonth = datePart.substring(0, 7); 
                     if(yearMonth.includes("-") && yearMonth.length === 7) {
                         months.add(yearMonth);
                     }
@@ -264,7 +264,6 @@
                 "07": "กรกฎาคม", "08": "สิงหาคม", "09": "กันยายน", "10": "ตุลาคม", "11": "พฤศจิกายน", "12": "ธันวาคม"
             };
 
-            // เรียงเดือนจากล่าสุดขึ้นก่อน
             const sortedMonths = Array.from(months).sort().reverse();
             sortedMonths.forEach(ym => {
                 let [year, month] = ym.split("-");
@@ -273,13 +272,47 @@
                 
                 const opt = document.createElement("option");
                 opt.value = ym;
-                opt.innerText = `${thaiName} ${thaiYear}`;
+                opt.innerText = `สถิติเดือน: ${thaiName} ${thaiYear}`;
                 select.appendChild(opt);
             });
 
             if(Array.from(months).includes(savedValue)) {
                 select.value = savedValue;
             }
+        }
+
+        // ⚡ [ฟังก์ชันหลักของ Dashboard] ทำงานเมื่อเปลี่ยนเดือนใน Dropdown ด้านบน
+        function handleDashboardFilter() {
+            const selectedMonth = document.getElementById("dashboardMonthSelect").value;
+            const badge = document.getElementById("dashboardBadge");
+            const title = document.getElementById("summaryTitle");
+
+            let filteredData = filteredByPinData;
+
+            if (selectedMonth) {
+                // คัดกรองข้อมูลเฉพาะเดือนเพื่อส่งไปคำนวณยอดสรุปและการ์ดม่วง
+                filteredData = filteredByPinData.filter(item => {
+                    let itemDateStr = item.date ? item.date.split(" ")[0] : "";
+                    let itemYearMonth = itemDateStr.substring(0, 7);
+                    
+                    if(itemDateStr.includes("/")) {
+                        const parts = itemDateStr.split("/");
+                        if(parts[0].length < 4) { 
+                            itemYearMonth = `${parts[2]}-${parts[1].padStart(2,'0')}`;
+                        }
+                    }
+                    return itemYearMonth === selectedMonth;
+                });
+
+                badge.innerText = "เฉพาะเดือนที่เลือก";
+                title.innerText = "ยอดเงินคงเหลือประจำเดือน";
+            } else {
+                badge.innerText = "ภาพรวมทั้งหมด";
+                title.innerText = "ยอดเงินคงเหลือทั้งหมด";
+            }
+
+            calculateSummary(filteredData); // อัปเดตยอดเงินในการ์ดสีม่วง
+            updateMonthlyChart(filteredByPinData, selectedMonth); // วาดกราฟ (และส่งเดือนไปทำไฮไลท์สี)
         }
 
         function calculateSummary(data) {
@@ -295,8 +328,8 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
         }
 
-        // 📊 ฟังก์ชันประมวลผลและสร้างกราฟวิเคราะห์
-        function updateMonthlyChart(data) {
+        // 📊 สั่งวาดกราฟและทำระบบเน้นแท่งกราฟตามเดือนที่กดเลือกได้
+        function updateMonthlyChart(data, highlightMonth = "") {
             const monthlyData = {};
 
             data.forEach(item => {
@@ -322,6 +355,8 @@
             const incomeDataset = [];
             const expenseDataset = [];
             const labels = [];
+            const incColors = [];
+            const expColors = [];
 
             const monthNamesThai = {
                 "01": "ม.ค.", "02": "ก.พ.", "03": "มี.ค.", "04": "เม.ย.", "05": "พ.ค.", "06": "มิ.ย.",
@@ -334,6 +369,20 @@
                 labels.push(thaiLabel);
                 incomeDataset.push(monthlyData[ym].income);
                 expenseDataset.push(monthlyData[ym].expense);
+
+                // ถ้าระบบเลือกเดือนใดเดือนหนึ่งอยู่ จะหรี่สีเดือนอื่นลงและดึงแท่งเดือนนั้นให้เด่นขึ้นมา
+                if (highlightMonth) {
+                    if (ym === highlightMonth) {
+                        incColors.push('rgba(34, 197, 94, 0.9)');
+                        expColors.push('rgba(239, 68, 68, 0.9)');
+                    } else {
+                        incColors.push('rgba(34, 197, 94, 0.25)'); // หรี่สีเขียวจางลง
+                        expColors.push('rgba(239, 68, 68, 0.25)');   // หรี่สีแดงจางลง
+                    }
+                } else {
+                    incColors.push('rgba(34, 197, 94, 0.75)');
+                    expColors.push('rgba(239, 68, 68, 0.75)');
+                }
             });
 
             const ctx = document.getElementById('monthlyChart').getContext('2d');
@@ -346,6 +395,8 @@
                 labels.push("ไม่มีข้อมูล");
                 incomeDataset.push(0);
                 expenseDataset.push(0);
+                incColors.push('rgba(34, 197, 94, 0.5)');
+                expColors.push('rgba(239, 68, 68, 0.5)');
             }
 
             myChartInstance = new Chart(ctx, {
@@ -356,7 +407,7 @@
                         {
                             label: 'รายรับ (💰)',
                             data: incomeDataset,
-                            backgroundColor: 'rgba(34, 197, 94, 0.75)', 
+                            backgroundColor: incColors, 
                             borderColor: 'rgb(34, 197, 94)',
                             borderWidth: 1,
                             borderRadius: 6
@@ -364,7 +415,7 @@
                         {
                             label: 'รายจ่าย (💸)',
                             data: expenseDataset,
-                            backgroundColor: 'rgba(239, 68, 68, 0.75)', 
+                            backgroundColor: expColors, 
                             borderColor: 'rgb(239, 68, 68)',
                             borderWidth: 1,
                             borderRadius: 6
@@ -435,14 +486,13 @@
             });
         }
 
-        // 🔍 ระบบฟิลเตอร์คัดกรองข้อมูล และส่งผลไปคำนวณยอดสรุปตามเดือนที่เลือกแบบเรียลไทม์
-        function filterData() {
+        // 🔍 [ฟังก์ชันคัดกรองประวัติรายการ] ทำงานแยกอิสระ ไม่ปนกับเดสก์บอร์ดข้างบน
+        function filterHistoryList() {
             const keyword = document.getElementById("searchNote").value.toLowerCase();
             const filterDate = document.getElementById("filterDate").value;
-            const filterMonth = document.getElementById("filterMonthSelect").value; // ดึงค่าเดือนย่อยที่เลือก
             const clearBtn = document.getElementById("clearFilterBtn");
 
-            if (keyword || filterDate || filterMonth) {
+            if (keyword || filterDate) {
                 clearBtn.classList.remove("hidden");
             } else {
                 clearBtn.classList.add("hidden");
@@ -454,35 +504,24 @@
                 const matchKeyword = category.includes(keyword) || note.includes(keyword);
                 
                 let itemDateStr = item.date ? item.date.split(" ")[0] : "";
-                let itemYearMonth = itemDateStr.substring(0, 7); // เอา YYYY-MM มาตรวจสอบกับ Dropdown
-
                 if(itemDateStr.includes("/")) {
                     const parts = itemDateStr.split("/");
                     if(parts[0].length < 4) { 
                         itemDateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                        itemYearMonth = `${parts[2]}-${parts[1].padStart(2,'0')}`;
                     }
                 }
 
                 const matchDate = filterDate ? (itemDateStr.includes(filterDate)) : true;
-                const matchMonth = filterMonth ? (itemYearMonth === filterMonth) : true; // ตรวจเงื่อนไขเดือนที่ระบุ
-                
-                return matchKeyword && matchDate && matchMonth;
+                return matchKeyword && matchDate;
             });
 
-            calculateSummary(filtered);      // รีเซ็ตยอดรวมกล่องบนตามเดือนที่เลือกตัวกรอง
-            updateMonthlyChart(filtered);   // รีเซ็ตแผงความสูงกราฟตามเดือนที่เลือก
-            renderHistory(filtered);        // รีเซ็ตรายการประวัติ
+            renderHistory(filtered); // กรองเฉพาะหน้าตารายการประวัติย่อย
         }
 
-        function clearFilter() {
+        function clearHistoryFilter() {
             document.getElementById("searchNote").value = "";
             document.getElementById("filterDate").value = "";
-            document.getElementById("filterMonthSelect").value = "";
             document.getElementById("clearFilterBtn").classList.add("hidden");
-            
-            calculateSummary(filteredByPinData);
-            updateMonthlyChart(filteredByPinData);
             renderHistory(filteredByPinData);
         }
 
