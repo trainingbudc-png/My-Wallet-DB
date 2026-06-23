@@ -58,7 +58,7 @@
 
         <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-6">
             <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนที่จะดูสถิติ)</label>
-            <select id="dashboardMonthSelect" onchange="handleDashboardFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
+            <select id="dashboardMonthSelect" onchange="applyUnifiedFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
                 <option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>
             </select>
         </div>
@@ -115,9 +115,9 @@
             <div class="flex gap-2">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-gray-400"></i>
-                    <input type="text" id="searchNote" oninput="filterHistoryList()" placeholder="ค้นหาหมวดหมู่/หมายเหตุ..." class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-purple-500">
+                    <input type="text" id="searchNote" oninput="applyUnifiedFilter()" placeholder="ค้นหาหมวดหมู่/หมายเหตุ..." class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-purple-500">
                 </div>
-                <input type="date" id="filterDate" onchange="filterHistoryList()" class="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-purple-500 text-gray-600">
+                <input type="date" id="filterDate" onchange="applyUnifiedFilter()" class="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs focus:outline-none focus:border-purple-500 text-gray-600">
             </div>
         </div>
         
@@ -222,9 +222,8 @@
                     filteredByPinData = response.data || [];
                     filteredByPinData.reverse();
                     
-                    buildDashboardMonthDropdown(filteredByPinData); // ป้อนรายการเดือนเข้าสู่เดสก์บอร์ด
-                    handleDashboardFilter(); // คำนวณแผงเดสก์บอร์ดและวาดกราฟหลัก
-                    renderHistory(filteredByPinData); // แสดงรายการประวัติทั้งหมดตอนเริ่มต้น
+                    buildDashboardMonthDropdown(filteredByPinData); // สร้างรายการเดือนใน dropdown
+                    applyUnifiedFilter(); // รันระบบกรองกลางประมวลผลทันที
                 } else {
                     showEmptyState();
                 }
@@ -242,7 +241,6 @@
             renderHistory([]);
         }
 
-        // 📅 จัดการสร้างตัวเลือกเดือนใส่ลงในแผงควบคุม Dashboard ด้านบน
         function buildDashboardMonthDropdown(data) {
             const select = document.getElementById("dashboardMonthSelect");
             const savedValue = select.value; 
@@ -281,38 +279,80 @@
             }
         }
 
-        // ⚡ [ฟังก์ชันหลักของ Dashboard] ทำงานเมื่อเปลี่ยนเดือนใน Dropdown ด้านบน
-        function handleDashboardFilter() {
+        // 🎛️ [ระบบคัดกรองแบบรวมศูนย์ - Unified Filter] สั่งให้ทุกฟังก์ชันทำงานประสานร่วมกัน
+        function applyUnifiedFilter() {
             const selectedMonth = document.getElementById("dashboardMonthSelect").value;
+            const keyword = document.getElementById("searchNote").value.toLowerCase();
+            const filterDate = document.getElementById("filterDate").value;
+            
             const badge = document.getElementById("dashboardBadge");
             const title = document.getElementById("summaryTitle");
+            const clearBtn = document.getElementById("clearFilterBtn");
 
-            let filteredData = filteredByPinData;
+            // แสดง/ซ่อน ปุ่มล้างประวัติการค้นหาด้านล่าง
+            if (keyword || filterDate) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
 
+            // 1. คัดกรองข้อมูลสำหรับกล่อง Dashboard (การ์ดม่วง) ตามเดือนที่เลือกด้านบน
+            let dashboardFilteredData = filteredByPinData;
             if (selectedMonth) {
-                // คัดกรองข้อมูลเฉพาะเดือนเพื่อส่งไปคำนวณยอดสรุปและการ์ดม่วง
-                filteredData = filteredByPinData.filter(item => {
-                    let itemDateStr = item.date ? item.date.split(" ")[0] : "";
-                    let itemYearMonth = itemDateStr.substring(0, 7);
-                    
-                    if(itemDateStr.includes("/")) {
-                        const parts = itemDateStr.split("/");
-                        if(parts[0].length < 4) { 
-                            itemYearMonth = `${parts[2]}-${parts[1].padStart(2,'0')}`;
-                        }
-                    }
+                dashboardFilteredData = filteredByPinData.filter(item => {
+                    let itemYearMonth = getYearMonthStr(item.date);
                     return itemYearMonth === selectedMonth;
                 });
-
                 badge.innerText = "เฉพาะเดือนที่เลือก";
                 title.innerText = "ยอดเงินคงเหลือประจำเดือน";
             } else {
                 badge.innerText = "ภาพรวมทั้งหมด";
                 title.innerText = "ยอดเงินคงเหลือทั้งหมด";
             }
+            calculateSummary(dashboardFilteredData); // ส่งข้อมูลไปอัปเดตกล่องการ์ดม่วง
+            updateMonthlyChart(filteredByPinData, selectedMonth);  // ส่งข้อมูลไปวาดกราฟและทำไฮไลท์
 
-            calculateSummary(filteredData); // อัปเดตยอดเงินในการ์ดสีม่วง
-            updateMonthlyChart(filteredByPinData, selectedMonth); // วาดกราฟ (และส่งเดือนไปทำไฮไลท์สี)
+            // 2. คัดกรองข้อมูลสำหรับแสดงใน "ตารางประวัติรายการ" ด้านล่าง (ทำงานร่วมกับเงื่อนไขเดือนด้านบนด้วย)
+            let historyFilteredData = filteredByPinData.filter(item => {
+                // ตรวจสอบเงื่อนไขเดือน (จาก dropdown ด้านบน)
+                if (selectedMonth) {
+                    let itemYearMonth = getYearMonthStr(item.date);
+                    if (itemYearMonth !== selectedMonth) return false;
+                }
+
+                // ตรวจสอบเงื่อนไขคำค้นหา (จากช่องค้นหาด้านล่าง)
+                const category = (item.category || "").toLowerCase();
+                const note = (item.note || "").toLowerCase();
+                const matchKeyword = category.includes(keyword) || note.includes(keyword);
+
+                // ตรวจสอบเงื่อนไขปฏิทินวันที่ย่อย (จากช่องเลือกวันที่ด้านล่าง)
+                let itemDateStr = item.date ? item.date.split(" ")[0] : "";
+                if(itemDateStr.includes("/")) {
+                    const parts = itemDateStr.split("/");
+                    if(parts[0].length < 4) { 
+                        itemDateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                    }
+                }
+                const matchDate = filterDate ? (itemDateStr.includes(filterDate)) : true;
+
+                return matchKeyword && matchDate;
+            });
+
+            renderHistory(historyFilteredData); // ส่งข้อมูลที่แมตช์ทั้งหมดไปแสดงในประวัติรายการ
+        }
+
+        // ฟังก์ชันช่วยดึงค่าปี-เดือน (YYYY-MM) ออกมาจากข้อมูลวันที่ของระบบ
+        function getYearMonthStr(rawDate) {
+            if (!rawDate) return "";
+            let datePart = rawDate.split(" ")[0];
+            let yearMonth = datePart.substring(0, 7);
+            if(datePart.includes("/")) {
+                const parts = datePart.split("/");
+                if(parts[0].length < 4) { 
+                    yearMonth = `${parts[2]}-${parts[1].padStart(2,'0')}`;
+                }
+            }
+            return yearMonth;
         }
 
         function calculateSummary(data) {
@@ -328,7 +368,6 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
         }
 
-        // 📊 สั่งวาดกราฟและทำระบบเน้นแท่งกราฟตามเดือนที่กดเลือกได้
         function updateMonthlyChart(data, highlightMonth = "") {
             const monthlyData = {};
 
@@ -336,8 +375,8 @@
                 let rawDate = item.date || "";
                 if (!rawDate) return;
                 
-                let datePart = rawDate.split(" ")[0]; 
-                let yearMonth = datePart.substring(0, 7); 
+                let yearMonth = getYearMonthStr(rawDate);
+                if (!yearMonth) return;
                 
                 if (!monthlyData[yearMonth]) {
                     monthlyData[yearMonth] = { income: 0, expense: 0 };
@@ -370,14 +409,14 @@
                 incomeDataset.push(monthlyData[ym].income);
                 expenseDataset.push(monthlyData[ym].expense);
 
-                // ถ้าระบบเลือกเดือนใดเดือนหนึ่งอยู่ จะหรี่สีเดือนอื่นลงและดึงแท่งเดือนนั้นให้เด่นขึ้นมา
+                // หากมีการเลือกเดือนด้านบน ระบบจะลดความทึบแสงของแท่งเดือนอื่นลง เพื่อให้เดือนที่เลือกโดดเด่นขึ้นชัดเจน
                 if (highlightMonth) {
                     if (ym === highlightMonth) {
-                        incColors.push('rgba(34, 197, 94, 0.9)');
-                        expColors.push('rgba(239, 68, 68, 0.9)');
+                        incColors.push('rgba(34, 197, 94, 0.95)');
+                        expColors.push('rgba(239, 68, 68, 0.95)');
                     } else {
-                        incColors.push('rgba(34, 197, 94, 0.25)'); // หรี่สีเขียวจางลง
-                        expColors.push('rgba(239, 68, 68, 0.25)');   // หรี่สีแดงจางลง
+                        incColors.push('rgba(34, 197, 94, 0.2)'); 
+                        expColors.push('rgba(239, 68, 68, 0.2)');   
                     }
                 } else {
                     incColors.push('rgba(34, 197, 94, 0.75)');
@@ -446,7 +485,7 @@
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
             if(dataToRender.length === 0) {
-                list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการ</p>';
+                list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการตามเงื่อนไขที่ค้นหา</p>';
                 return;
             }
             list.innerHTML = "";
@@ -486,43 +525,10 @@
             });
         }
 
-        // 🔍 [ฟังก์ชันคัดกรองประวัติรายการ] ทำงานแยกอิสระ ไม่ปนกับเดสก์บอร์ดข้างบน
-        function filterHistoryList() {
-            const keyword = document.getElementById("searchNote").value.toLowerCase();
-            const filterDate = document.getElementById("filterDate").value;
-            const clearBtn = document.getElementById("clearFilterBtn");
-
-            if (keyword || filterDate) {
-                clearBtn.classList.remove("hidden");
-            } else {
-                clearBtn.classList.add("hidden");
-            }
-
-            const filtered = filteredByPinData.filter(item => {
-                const category = (item.category || "").toLowerCase();
-                const note = (item.note || "").toLowerCase();
-                const matchKeyword = category.includes(keyword) || note.includes(keyword);
-                
-                let itemDateStr = item.date ? item.date.split(" ")[0] : "";
-                if(itemDateStr.includes("/")) {
-                    const parts = itemDateStr.split("/");
-                    if(parts[0].length < 4) { 
-                        itemDateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                    }
-                }
-
-                const matchDate = filterDate ? (itemDateStr.includes(filterDate)) : true;
-                return matchKeyword && matchDate;
-            });
-
-            renderHistory(filtered); // กรองเฉพาะหน้าตารายการประวัติย่อย
-        }
-
         function clearHistoryFilter() {
             document.getElementById("searchNote").value = "";
             document.getElementById("filterDate").value = "";
-            document.getElementById("clearFilterBtn").classList.add("hidden");
-            renderHistory(filteredByPinData);
+            applyUnifiedFilter(); // รันระบบกรองกลางเพื่อรีเซ็ตหน้าจอประวัติกลับคืนมาตามเดือนปัจจุบันด้านบน
         }
 
         function handleSave(event) {
