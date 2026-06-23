@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wallet - LINE Login Vercel Pro</title>
+    <title>My Wallet - Dashboard & Charts Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen flex items-center justify-center p-4">
 
@@ -49,6 +50,16 @@
                     <p class="text-purple-200">🔴 รายจ่ายรวม</p>
                     <p id="totalExpense" class="font-bold text-sm">-0 บาท</p>
                 </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs mb-6">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-chart-bar text-purple-600"></i>
+                <h3 class="text-sm font-bold text-gray-800">วิเคราะห์สถิติรายรับ-รายจ่ายรายเดือน</h3>
+            </div>
+            <div class="w-full relative h-48">
+                <canvas id="monthlyChart"></canvas>
             </div>
         </div>
 
@@ -133,6 +144,7 @@
         
         let currentLineId = ""; 
         let filteredByPinData = []; 
+        let myChartInstance = null; // ตัวแปรเก็บสถานะของกราฟ
 
         document.addEventListener("DOMContentLoaded", function() {
             initLiff();
@@ -157,7 +169,6 @@
             liff.login();
         }
 
-        // 🛠️ ปรับแก้ฟังก์ชันออกจากระบบให้มีการแจ้งเตือนยืนยันก่อนเสมอ
         function logoutLine() {
             const isConfirm = confirm("คุณต้องการออกจากระบบใช่หรือไม่?");
             if (isConfirm) {
@@ -200,6 +211,7 @@
                     filteredByPinData = response.data || [];
                     filteredByPinData.reverse();
                     calculateSummary(filteredByPinData);
+                    updateMonthlyChart(filteredByPinData); // เรียกอัปเดตข้อมูลลงกราฟเดสก์บอร์ด
                     renderHistory(filteredByPinData);
                 } else {
                     showEmptyState();
@@ -214,6 +226,7 @@
             const list = document.getElementById("historyList");
             list.innerHTML = '<p class="text-center text-sm text-gray-400 py-4">ไม่พบประวัติรายการเก่า</p>';
             calculateSummary([]);
+            updateMonthlyChart([]);
             renderHistory([]);
         }
 
@@ -228,6 +241,108 @@
             document.getElementById("totalBalance").innerText = (inc - exp).toLocaleString() + " บาท";
             document.getElementById("totalIncome").innerText = "+" + inc.toLocaleString() + " บาท";
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString() + " บาท";
+        }
+
+        // 📊 ฟังก์ชันประมวลผลข้อมูลและสร้างกราฟเปรียบเทียบแต่ละเดือน
+        function updateMonthlyChart(data) {
+            const monthlyData = {};
+
+            // วนลูปกลุ่มข้อมูลตาม ปี-เดือน (เช่น "2026-06")
+            data.forEach(item => {
+                let rawDate = item.date || "";
+                if (!rawDate) return;
+                
+                let datePart = rawDate.split(" ")[0]; // เอาเฉพาะส่วนวันที่
+                let yearMonth = datePart.substring(0, 7); // ตัดเชือกเหลือแค่ YYYY-MM
+                
+                if (!monthlyData[yearMonth]) {
+                    monthlyData[yearMonth] = { income: 0, expense: 0 };
+                }
+                
+                let amt = Number(item.amount || 0);
+                if (item.type === "รายรับ") {
+                    monthlyData[yearMonth].income += amt;
+                } else if (item.type === "รายจ่าย") {
+                    monthlyData[yearMonth].expense += amt;
+                }
+            });
+
+            // จัดเรียงเดือนจากอดีตไปปัจจุบัน
+            const sortedMonths = Object.keys(monthlyData).sort();
+            const incomeDataset = [];
+            const expenseDataset = [];
+            const labels = [];
+
+            // ชื่อเดือนภาษาไทยย่อ
+            const monthNamesThai = {
+                "01": "ม.ค.", "02": "ก.พ.", "03": "มี.ค.", "04": "เม.ย.", "05": "พ.ค.", "06": "มิ.ย.",
+                "07": "ก.ค.", "08": "ส.ค.", "09": "ก.ย.", "10": "ต.ค.", "11": "พ.ย.", "12": "ธ.ค."
+            };
+
+            sortedMonths.forEach(ym => {
+                let [year, month] = ym.split("-");
+                let thaiLabel = (monthNamesThai[month] || month) + " " + (parseInt(year) + 543).toString().substring(2);
+                labels.push(thaiLabel);
+                incomeDataset.push(monthlyData[ym].income);
+                expenseDataset.push(monthlyData[ym].expense);
+            });
+
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            
+            // หากมีกราฟเก่าอยู่ให้ทำลายทิ้งก่อน เพื่อวาดใหม่แบบเรียลไทม์
+            if (myChartInstance) {
+                myChartInstance.destroy();
+            }
+
+            // ถ้าไม่มีข้อมูลเลย ให้ขึ้นกราฟเปล่าตัวอย่าง
+            if (labels.length === 0) {
+                labels.push("ไม่มีข้อมูล");
+                incomeDataset.push(0);
+                expenseDataset.push(0);
+            }
+
+            myChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'รายรับ (💰)',
+                            data: incomeDataset,
+                            backgroundColor: 'rgba(34, 197, 94, 0.75)', // สีเขียวโปร่งแสง
+                            borderColor: 'rgb(34, 197, 94)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'รายจ่าย (💸)',
+                            data: expenseDataset,
+                            backgroundColor: 'rgba(239, 68, 68, 0.75)', // สีแดงโปร่งแสง
+                            borderColor: 'rgb(239, 68, 68)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 10 } }
+                        },
+                        x: {
+                            ticks: { font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { font: { size: 11, family: 'sans-serif' } }
+                        }
+                    }
+                }
+            });
         }
 
         function renderHistory(dataToRender) {
