@@ -222,8 +222,8 @@
                     filteredByPinData = response.data || [];
                     filteredByPinData.reverse();
                     
-                    buildDashboardMonthDropdown(filteredByPinData); // สร้างรายการเดือนใน dropdown
-                    applyUnifiedFilter(); // รันระบบกรองกลางประมวลผลทันที
+                    buildDashboardMonthDropdown(filteredByPinData); 
+                    applyUnifiedFilter(); 
                 } else {
                     showEmptyState();
                 }
@@ -289,7 +289,6 @@
             const title = document.getElementById("summaryTitle");
             const clearBtn = document.getElementById("clearFilterBtn");
 
-            // แสดง/ซ่อน ปุ่มล้างประวัติการค้นหาด้านล่าง
             if (keyword || filterDate) {
                 clearBtn.classList.remove("hidden");
             } else {
@@ -309,23 +308,20 @@
                 badge.innerText = "ภาพรวมทั้งหมด";
                 title.innerText = "ยอดเงินคงเหลือทั้งหมด";
             }
-            calculateSummary(dashboardFilteredData); // ส่งข้อมูลไปอัปเดตกล่องการ์ดม่วง
-            updateMonthlyChart(filteredByPinData, selectedMonth);  // ส่งข้อมูลไปวาดกราฟและทำไฮไลท์
+            calculateSummary(dashboardFilteredData); 
+            updateMonthlyChart(filteredByPinData, selectedMonth);  
 
-            // 2. คัดกรองข้อมูลสำหรับแสดงใน "ตารางประวัติรายการ" ด้านล่าง (ทำงานร่วมกับเงื่อนไขเดือนด้านบนด้วย)
+            // 2. คัดกรองข้อมูลสำหรับแสดงใน "ตารางประวัติรายการ" ด้านล่าง
             let historyFilteredData = filteredByPinData.filter(item => {
-                // ตรวจสอบเงื่อนไขเดือน (จาก dropdown ด้านบน)
                 if (selectedMonth) {
                     let itemYearMonth = getYearMonthStr(item.date);
                     if (itemYearMonth !== selectedMonth) return false;
                 }
 
-                // ตรวจสอบเงื่อนไขคำค้นหา (จากช่องค้นหาด้านล่าง)
                 const category = (item.category || "").toLowerCase();
                 const note = (item.note || "").toLowerCase();
                 const matchKeyword = category.includes(keyword) || note.includes(keyword);
 
-                // ตรวจสอบเงื่อนไขปฏิทินวันที่ย่อย (จากช่องเลือกวันที่ด้านล่าง)
                 let itemDateStr = item.date ? item.date.split(" ")[0] : "";
                 if(itemDateStr.includes("/")) {
                     const parts = itemDateStr.split("/");
@@ -338,10 +334,9 @@
                 return matchKeyword && matchDate;
             });
 
-            renderHistory(historyFilteredData); // ส่งข้อมูลที่แมตช์ทั้งหมดไปแสดงในประวัติรายการ
+            renderHistory(historyFilteredData); 
         }
 
-        // ฟังก์ชันช่วยดึงค่าปี-เดือน (YYYY-MM) ออกมาจากข้อมูลวันที่ของระบบ
         function getYearMonthStr(rawDate) {
             if (!rawDate) return "";
             let datePart = rawDate.split(" ")[0];
@@ -409,7 +404,6 @@
                 incomeDataset.push(monthlyData[ym].income);
                 expenseDataset.push(monthlyData[ym].expense);
 
-                // หากมีการเลือกเดือนด้านบน ระบบจะลดความทึบแสงของแท่งเดือนอื่นลง เพื่อให้เดือนที่เลือกโดดเด่นขึ้นชัดเจน
                 if (highlightMonth) {
                     if (ym === highlightMonth) {
                         incColors.push('rgba(34, 197, 94, 0.95)');
@@ -528,7 +522,7 @@
         function clearHistoryFilter() {
             document.getElementById("searchNote").value = "";
             document.getElementById("filterDate").value = "";
-            applyUnifiedFilter(); // รันระบบกรองกลางเพื่อรีเซ็ตหน้าจอประวัติกลับคืนมาตามเดือนปัจจุบันด้านบน
+            applyUnifiedFilter(); 
         }
 
         function handleSave(event) {
