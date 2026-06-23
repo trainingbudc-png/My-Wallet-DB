@@ -38,7 +38,7 @@
             </button>
         </div>
 
-        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg mb-4">
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg mb-6">
             <div class="flex justify-between items-center">
                 <p class="text-xs text-purple-200" id="summaryTitle">ยอดเงินคงเหลือทั้งหมด</p>
                 <span id="dashboardBadge" class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">ภาพรวมทั้งหมด</span>
@@ -56,25 +56,8 @@
             </div>
         </div>
 
-        <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-4">
-            <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนเพื่อกรองข้อมูลและกราฟ)</label>
-            <select id="dashboardMonthSelect" onchange="applyUnifiedFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
-                <option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>
-            </select>
-        </div>
-
-        <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs mb-6">
-            <div class="flex items-center gap-2 mb-2.5">
-                <i class="fa-solid fa-pie-chart text-purple-600 text-xs"></i>
-                <h3 class="text-xs font-bold text-gray-800" id="categoryBoxTitle">สรุปยอดเงินแยกตามหมวดหมู่</h3>
-            </div>
-            <div id="categorySummaryList" class="space-y-2 text-xs">
-                <p class="text-gray-400 text-center py-2">ไม่มีข้อมูลค่าใช้จ่ายในส่วนนี้</p>
-            </div>
-        </div>
-
         <h2 class="text-lg font-bold text-gray-800 mb-3">บันทึกรายการใหม่</h2>
-        <form id="walletForm" onsubmit="handleSave(event)" class="space-y-4">
+        <form id="walletForm" onsubmit="handleSave(event)" class="space-y-4 mb-6">
             <div class="grid grid-cols-2 gap-3">
                 <label class="border-2 border-gray-200 rounded-xl p-2.5 flex items-center justify-center cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
                     <input type="radio" name="type" value="รายรับ" checked class="hidden">
@@ -115,6 +98,23 @@
         </form>
 
         <hr class="my-6 border-gray-100">
+
+        <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs mb-4">
+            <label class="block text-[11px] font-bold text-gray-600 mb-1"><i class="fa-solid fa-sliders text-purple-600 mr-1"></i> แผงควบคุมเดสก์บอร์ด (เลือกเดือนเพื่อกรองข้อมูลและกราฟ)</label>
+            <select id="dashboardMonthSelect" onchange="applyUnifiedFilter()" class="w-full bg-slate-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:border-purple-500 text-gray-700 cursor-pointer">
+                <option value="">📊 แสดงทุกเดือนรวมกันทั้งหมด (ภาพรวม)</option>
+            </select>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs mb-6">
+            <div class="flex items-center gap-2 mb-2.5">
+                <i class="fa-solid fa-pie-chart text-purple-600 text-xs"></i>
+                <h3 class="text-xs font-bold text-gray-800" id="categoryBoxTitle">สรุปยอดเงินแยกตามหมวดหมู่</h3>
+            </div>
+            <div id="categorySummaryList" class="space-y-2 text-xs">
+                <p class="text-gray-400 text-center py-2">ไม่มีข้อมูลค่าใช้จ่ายในส่วนนี้</p>
+            </div>
+        </div>
 
         <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs mb-6">
             <div class="flex items-center gap-2 mb-3">
@@ -382,7 +382,7 @@
             document.getElementById("totalExpense").innerText = "-" + exp.toLocaleString(undefined, {maximumFractionDigits: 2}) + " บาท";
         }
 
-        // 📂 [ฟังก์ชันคำนวณใหม่] แยกหมวดหมู่รายรับ-รายจ่ายโชว์ในแดชบอร์ด
+        // 📂 แยกหมวดหมู่รายรับ-รายจ่ายโชว์ในแดชบอร์ด
         function calculateCategoryBreakdown(data) {
             const container = document.getElementById("categorySummaryList");
             if(data.length === 0) {
