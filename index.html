@@ -104,7 +104,17 @@
             </button>
         </form>
 
-        <hr class="my-5 border-gray-100">
+        <hr class="my-6 border-gray-100">
+
+        <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs mb-6">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-chart-bar text-purple-600"></i>
+                <h3 class="text-sm font-bold text-gray-800">วิเคราะห์สถิติรายรับ-รายจ่ายรายเดือน</h3>
+            </div>
+            <div class="w-full relative h-48">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
         
         <div class="mb-4 bg-gray-50 p-3 rounded-2xl border border-gray-100">
             <div class="flex justify-between items-center mb-2">
@@ -121,18 +131,8 @@
             </div>
         </div>
         
-        <div class="max-h-52 overflow-y-auto space-y-2 scroll-smooth pr-1 mb-6" id="historyList">
+        <div class="max-h-52 overflow-y-auto space-y-2 scroll-smooth pr-1" id="historyList">
             <p class="text-center text-sm text-gray-400 py-4">กำลังโหลดประวัติ...</p>
-        </div>
-
-        <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs">
-            <div class="flex items-center gap-2 mb-3">
-                <i class="fa-solid fa-chart-bar text-purple-600"></i>
-                <h3 class="text-sm font-bold text-gray-800">วิเคราะห์สถิติรายรับ-รายจ่ายรายเดือน</h3>
-            </div>
-            <div class="w-full relative h-48">
-                <canvas id="monthlyChart"></canvas>
-            </div>
         </div>
     </div>
 
@@ -279,7 +279,6 @@
             }
         }
 
-        // 🎛️ [ระบบคัดกรองแบบรวมศูนย์ - Unified Filter] สั่งให้ทุกฟังก์ชันทำงานประสานร่วมกัน
         function applyUnifiedFilter() {
             const selectedMonth = document.getElementById("dashboardMonthSelect").value;
             const keyword = document.getElementById("searchNote").value.toLowerCase();
@@ -295,7 +294,6 @@
                 clearBtn.classList.add("hidden");
             }
 
-            // 1. คัดกรองข้อมูลสำหรับกล่อง Dashboard (การ์ดม่วง) ตามเดือนที่เลือกด้านบน
             let dashboardFilteredData = filteredByPinData;
             if (selectedMonth) {
                 dashboardFilteredData = filteredByPinData.filter(item => {
@@ -311,7 +309,6 @@
             calculateSummary(dashboardFilteredData); 
             updateMonthlyChart(filteredByPinData, selectedMonth);  
 
-            // 2. คัดกรองข้อมูลสำหรับแสดงใน "ตารางประวัติรายการ" ด้านล่าง
             let historyFilteredData = filteredByPinData.filter(item => {
                 if (selectedMonth) {
                     let itemYearMonth = getYearMonthStr(item.date);
@@ -475,6 +472,10 @@
                 }
             });
         }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // ป้องกันปัญหา Chart.js ทับพื้นที่ในกรอบ flex-col
+        });
 
         function renderHistory(dataToRender) {
             const list = document.getElementById("historyList");
